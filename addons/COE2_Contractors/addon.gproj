@@ -10,4 +10,23 @@ GameProject {
   "6A885683BA928BB5"
   "6A8A0C37A19F762B"
  }
+ Configurations {
+  GameProjectConfig PC {
+   SystemModuleSettings SystemModuleSettings "{5F10A1570304557B}" {
+    Configs + {
+     "{A1CC3EA4DB33787D}Configs/Contractors/Systems/CTR_Systems.conf"
+    }
+   }
+  }
+  GameProjectConfig XBOX_ONE {
+  }
+  GameProjectConfig XBOX_SERIES {
+  }
+  GameProjectConfig PS4 {
+  }
+  GameProjectConfig PS5 {
+  }
+  GameProjectConfig HEADLESS {
+  }
+ }
 }

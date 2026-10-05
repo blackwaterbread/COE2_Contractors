@@ -14,6 +14,16 @@ Marx repository root. Default: ..\Marx next to this repository.
 .PARAMETER WorkshopAddonsDir
 Folder with Workshop downloads. Default: Documents\My Games\ArmaReforger\addons.
 
+.PARAMETER Tests
+Passes -ctrTests: the Workbench-only Contractors test harness runs whenever Play mode starts. Implied by
+-AutoCloseTests.
+
+.PARAMETER AutoCloseTests
+Passes -ctrTestsAutoClose: the test harness leaves Play mode after its run.
+
+.PARAMETER TestIdentity
+Passes -ctrTestIdentity: players without a backend identity get a name-based test owner ID in the test harness.
+
 .PARAMETER NoScriptAuthorizeAll
 Do not pass -scriptAuthorizeAll (which suppresses the "Script Authorization Required" prompt).
 
@@ -36,6 +46,9 @@ powershell -ExecutionPolicy Bypass -File tools/launch-workbench.ps1
 param(
 	[string]$MarxDir,
 	[string]$WorkshopAddonsDir,
+	[switch]$Tests,
+	[switch]$AutoCloseTests,
+	[switch]$TestIdentity,
 	[switch]$NoScriptAuthorizeAll,
 	[string]$WorkbenchExe,
 	[string]$GameDir,
@@ -153,6 +166,21 @@ $arguments = @("-gproj", "`"$gproj`"", "-addonsDir", "`"$($addonDirs -join ',')`
 if (-not $NoScriptAuthorizeAll)
 {
 	$arguments += "-scriptAuthorizeAll"
+}
+
+if ($Tests -or $AutoCloseTests)
+{
+	$arguments += "-ctrTests"
+}
+
+if ($AutoCloseTests)
+{
+	$arguments += "-ctrTestsAutoClose"
+}
+
+if ($TestIdentity)
+{
+	$arguments += "-ctrTestIdentity"
 }
 
 Write-Host "Workbench: $WorkbenchExe"
