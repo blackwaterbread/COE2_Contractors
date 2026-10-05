@@ -112,6 +112,9 @@ class CTR_TestRunner : Managed
 	{
 		s_Instance = new CTR_TestRunner();
 		CTR_StorageTests.Register(s_Instance);
+		CTR_PayoutTests.Register(s_Instance);
+		// Last: it changes the world (AO, host position).
+		CTR_OperationFlowTests.Register(s_Instance);
 		Print(TAG + string.Format("START tests=%1", s_Instance.m_aTests.Count()));
 		s_Instance.RunNext();
 	}

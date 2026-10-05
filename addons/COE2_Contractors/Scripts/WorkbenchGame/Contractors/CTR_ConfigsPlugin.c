@@ -1,4 +1,5 @@
-// Development tool: creates the Contractors persistence, Marx settings and systems configs and the mission headers.
+// Development tool: creates the Contractors persistence, Marx settings and systems configs, the mission headers and the
+// pay settings.
 // Object IDs come from Workbench.GenerateGloballyUniqueID64(); resource GUIDs from resource registration.
 // Existing files are never overwritten.
 
@@ -22,6 +23,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const string PERSISTENCE_FILE = "$COE2_Contractors:Configs/Contractors/Persistence/CTR_Persistence.conf";
 	static const string MARX_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_MarxSettings.conf";
 	static const string SYSTEMS_FILE = "$COE2_Contractors:Configs/Contractors/Systems/CTR_Systems.conf";
+	static const string PAY_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_Settings.conf";
 
 	static const int STARTING_CASH = 150;
 
@@ -32,6 +34,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	override void Run()
 	{
 		Print(TAG + "start");
+		CreatePaySettings();
 		ResourceName persistence = CreatePersistenceConfig();
 		ResourceName settings = CreateMarxSettings();
 		if (persistence.IsEmpty() || settings.IsEmpty())
@@ -45,6 +48,21 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		CreateMissionHeader("{4D4780DB775BFF64}Missions/COE2_Cain.conf", "Kolguyev", systems);
 		CreateMissionHeader("{EE676FAB9DFA4CF7}Missions/COE2_Eden.conf", "Everon", systems);
 		Print(TAG + "done");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! CTR_Settings with the built-in defaults; CTR_Settings.CONFIG must then be set to the printed resource name.
+	protected ResourceName CreatePaySettings()
+	{
+		Resource holder = BaseContainerTools.CreateContainerFromInstance(CTR_Settings.CreateDefault());
+		if (!holder || !holder.IsValid())
+		{
+			Print(TAG + "CreateContainerFromInstance failed: CTR_Settings", LogLevel.ERROR);
+			return ResourceName.Empty;
+		}
+
+		m_aHolders.Insert(holder);
+		return SaveAndRegister(holder.GetResource().ToBaseContainer(), PAY_SETTINGS_FILE);
 	}
 
 	//------------------------------------------------------------------------------------------------
