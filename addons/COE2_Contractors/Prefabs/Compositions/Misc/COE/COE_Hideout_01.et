@@ -1,0 +1,22 @@
+COE_MainBaseEntity {
+ ID "60A042236B7D1D24"
+ {
+  GenericEntity : "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et" {
+   ID "6A8B084FBFAB7940"
+   components {
+    MRX_ShopComponent "{6A89197001F4D092}" {
+     m_sShopId "contractors"
+     m_sDisplayName "Contractor Supply"
+     m_sCatalog "{503CE5B0C4047B85}Configs/Contractors/Shop/CTR_ShopCatalog.conf"
+     m_bAllowSell 0
+    }
+   }
+   coords -2.6 0 6.3
+  }
+  GenericEntity : "{66BACE8BD545B8C2}Prefabs/Marx/Stash/MRX_StashWardrobe.et" {
+   ID "6A8B084FBFAB789C"
+   coords -0.4 0 6.6
+   angles 0 180 0
+  }
+ }
+}

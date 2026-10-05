@@ -13,8 +13,11 @@ modded class COE_GameMode
 	{
 		super.OnGameStart();
 
-		if (Replication.IsServer())
-			CTR_CheckSystems();
+		if (!Replication.IsServer())
+			return;
+
+		CTR_CheckSystems();
+		Print(string.Format("[CTR] %1 base arsenals switched off", CTR_BaseArsenals.DisableAll()));
 	}
 
 	//------------------------------------------------------------------------------------------------

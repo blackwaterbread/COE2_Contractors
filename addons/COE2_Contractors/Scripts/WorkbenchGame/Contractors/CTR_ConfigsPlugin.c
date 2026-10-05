@@ -1,5 +1,5 @@
-// Development tool: creates the Contractors persistence, Marx settings and systems configs, the mission headers and the
-// pay settings.
+// Development tool: creates the Contractors persistence, Marx settings and systems configs, the mission headers, the
+// pay settings and the shop catalog.
 // Object IDs come from Workbench.GenerateGloballyUniqueID64(); resource GUIDs from resource registration.
 // Existing files are never overwritten.
 
@@ -24,6 +24,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const string MARX_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_MarxSettings.conf";
 	static const string SYSTEMS_FILE = "$COE2_Contractors:Configs/Contractors/Systems/CTR_Systems.conf";
 	static const string PAY_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_Settings.conf";
+	static const string SHOP_CATALOG_FILE = "$COE2_Contractors:Configs/Contractors/Shop/CTR_ShopCatalog.conf";
 
 	static const int STARTING_CASH = 150;
 
@@ -35,6 +36,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	{
 		Print(TAG + "start");
 		CreatePaySettings();
+		CreateShopCatalog();
 		ResourceName persistence = CreatePersistenceConfig();
 		ResourceName settings = CreateMarxSettings();
 		if (persistence.IsEmpty() || settings.IsEmpty())
@@ -63,6 +65,136 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 
 		m_aHolders.Insert(holder);
 		return SaveAndRegister(holder.GetResource().ToBaseContainer(), PAY_SETTINGS_FILE);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Every item with arsenal data in the vanilla faction item catalogs, priced by CTR_ShopPricing.
+	protected ResourceName CreateShopCatalog()
+	{
+		array<ResourceName> sources = {
+			"{5F7EC52FC40A03E2}Configs/EntityCatalog/US/InventoryItems_EntityCatalog_US.conf",
+			"{C53421647C3D0D2E}Configs/EntityCatalog/USSR/InventoryItems_EntityCatalog_USSR.conf",
+			"{E908001749419691}Configs/EntityCatalog/FIA/InventoryItems_EntityCatalog_FIA.conf",
+			"{9D7E5804BB2E9B28}Configs/EntityCatalog/CIV/InventoryItems_EntityCatalog_CIV.conf"
+		};
+
+		array<ref MRX_ShopItem> items = {};
+		array<string> prefabKeys = {};
+		array<string> ids = {};
+		foreach (ResourceName source : sources)
+		{
+			SCR_EntityCatalogMultiList catalog = SCR_ConfigHelperT<SCR_EntityCatalogMultiList>.GetConfigObject(source);
+			if (!catalog)
+			{
+				Print(TAG + "cannot load " + source, LogLevel.ERROR);
+				continue;
+			}
+
+			array<SCR_EntityCatalogMultiListEntry> lists = {};
+			catalog.GetMultiList(lists);
+			foreach (SCR_EntityCatalogMultiListEntry list : lists)
+			{
+				if (!list.m_aEntities)
+					continue;
+
+				foreach (SCR_EntityCatalogEntry entry : list.m_aEntities)
+				{
+					MRX_ShopItem item = CreateShopItem(entry, prefabKeys, ids);
+					if (item)
+						items.Insert(item);
+				}
+			}
+		}
+
+		MRX_ShopCatalog shopCatalog = new MRX_ShopCatalog();
+		shopCatalog.m_aItems = SortShopItems(items);
+		Print(TAG + string.Format("shop catalog: %1 items", shopCatalog.m_aItems.Count()));
+
+		Resource holder = BaseContainerTools.CreateContainerFromInstance(shopCatalog);
+		if (!holder || !holder.IsValid())
+		{
+			Print(TAG + "CreateContainerFromInstance failed: MRX_ShopCatalog", LogLevel.ERROR);
+			return ResourceName.Empty;
+		}
+
+		m_aHolders.Insert(holder);
+		return SaveAndRegister(holder.GetResource().ToBaseContainer(), SHOP_CATALOG_FILE);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Null for disabled entries, items without arsenal data, items not sold, and prefabs already added.
+	protected MRX_ShopItem CreateShopItem(SCR_EntityCatalogEntry entry, notnull array<string> prefabKeys, notnull array<string> ids)
+	{
+		if (!entry || !entry.IsEnabled())
+			return null;
+
+		SCR_ArsenalItem arsenal = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!arsenal)
+			return null;
+
+		ResourceName prefab = entry.GetPrefab();
+		string key = MRX_ShopCatalog.GetPrefabKey(prefab);
+		if (prefab.IsEmpty() || prefabKeys.Contains(key))
+			return null;
+
+		SCR_EArsenalItemType type = arsenal.GetItemType();
+		SCR_EArsenalItemMode mode = arsenal.GetItemMode();
+		int price = CTR_ShopPricing.GetPrice(type, mode, arsenal.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, false));
+		if (price <= 0)
+			return null;
+
+		prefabKeys.Insert(key);
+		string id = FilePath.StripExtension(FilePath.StripPath(prefab));
+		id.ToLower();
+		if (ids.Contains(id))
+			id = id + "_" + key.Substring(1, 8);
+
+		ids.Insert(id);
+
+		MRX_ShopItem item = new MRX_ShopItem();
+		item.m_sId = id;
+		item.m_sPrefab = prefab;
+		item.m_sCategory = CTR_ShopPricing.GetCategory(type, mode);
+		item.m_sCurrency = MRX_Settings.DEFAULT_CURRENCY;
+		item.m_iPrice = price;
+		item.m_iSellPrice = -1;
+		item.m_iStock = -1;
+		return item;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! By category, then price, then ID. Items move into the sorted array before leaving the source, so they stay referenced.
+	protected array<ref MRX_ShopItem> SortShopItems(notnull array<ref MRX_ShopItem> items)
+	{
+		array<ref MRX_ShopItem> sorted = {};
+		while (!items.IsEmpty())
+		{
+			int first;
+			for (int i = 1; i < items.Count(); i++)
+			{
+				if (CompareShopItems(items[i], items[first]) < 0)
+					first = i;
+			}
+
+			sorted.Insert(items[first]);
+			items.RemoveOrdered(first);
+		}
+
+		return sorted;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int CompareShopItems(MRX_ShopItem a, MRX_ShopItem b)
+	{
+		int categoryA = CTR_ShopPricing.GetCategoryOrder(a.m_sCategory);
+		int categoryB = CTR_ShopPricing.GetCategoryOrder(b.m_sCategory);
+		if (categoryA != categoryB)
+			return categoryA - categoryB;
+
+		if (a.m_iPrice != b.m_iPrice)
+			return a.m_iPrice - b.m_iPrice;
+
+		return a.m_sId.Compare(b.m_sId);
 	}
 
 	//------------------------------------------------------------------------------------------------
