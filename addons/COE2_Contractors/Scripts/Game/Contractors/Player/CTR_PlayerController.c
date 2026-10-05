@@ -46,6 +46,7 @@ modded class COE_PlayerController
 		s_CTR_LastResult = result;
 		Print(string.Format("[CTR] Operation result received: %1, pay %2, status %3", result.m_sOperationId, result.m_Payout.m_iTotal, typename.EnumToString(CTR_EPayStatus, result.m_ePayStatus)));
 		CTR_GetOnOperationResult().Invoke(result);
+		CTR_ResultDialog.Open(result);
 	}
 
 	//------------------------------------------------------------------------------------------------
