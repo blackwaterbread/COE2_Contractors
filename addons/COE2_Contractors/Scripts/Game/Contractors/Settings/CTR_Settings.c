@@ -69,6 +69,12 @@ class CTR_Settings
 	[Attribute("30", desc: "Seconds between the result screen and the return to base", params: "0 120")]
 	int m_iReturnDelaySeconds;
 
+	[Attribute(desc: "Gear every player respawns with, whatever the role: clothing, weapons, then the rest. It is issued: shops and loadouts give it no value. Empty = the built-in kit (CTR_StarterKit).", params: "et")]
+	ref array<ResourceName> m_aStarterKit;
+
+	[Attribute("75", desc: "Meters around the main base in which players cannot fire weapons, throw grenades or fire turrets. 0 = off.", params: "0 500")]
+	float m_fSafeZoneRadius;
+
 	protected static ref CTR_Settings s_Instance;
 
 	//------------------------------------------------------------------------------------------------
@@ -104,6 +110,7 @@ class CTR_Settings
 		settings.m_iCprRewardSeconds = 15;
 		settings.m_iCprMaxSecondsPerPatient = 120;
 		settings.m_iReturnDelaySeconds = 30;
+		settings.m_fSafeZoneRadius = 75;
 		settings.m_aTaskRewards = {
 			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),
 			CTR_TaskReward.Create("COE_FindIntelTaskBuilder", 8000),
@@ -116,6 +123,16 @@ class CTR_Settings
 			CTR_TaskReward.Create("COE_FreeHostageTaskBuilder", 20000)
 		};
 		return settings;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return The configured respawn kit, or the built-in one.
+	array<ResourceName> GetStarterKit()
+	{
+		if (m_aStarterKit && !m_aStarterKit.IsEmpty())
+			return m_aStarterKit;
+
+		return CTR_StarterKit.GetDefault();
 	}
 
 	//------------------------------------------------------------------------------------------------

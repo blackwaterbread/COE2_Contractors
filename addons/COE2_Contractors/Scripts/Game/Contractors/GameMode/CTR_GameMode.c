@@ -30,6 +30,16 @@ modded class COE_GameMode
 
 		CTR_CheckSystems();
 		Print(string.Format("[CTR] %1 base arsenals switched off", CTR_BaseArsenals.DisableAll()));
+		Print(string.Format("[CTR] Loadout prices from %1 shops", CTR_LoadoutPrices.Setup()));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Every role respawns with the same minimal kit (not when the Game Master possesses a character).
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	{
+		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
+		if (entity && !SCR_PossessSpawnData.Cast(data))
+			CTR_StarterKit.Apply(entity, CTR_Settings.Get().GetStarterKit());
 	}
 
 	//------------------------------------------------------------------------------------------------
