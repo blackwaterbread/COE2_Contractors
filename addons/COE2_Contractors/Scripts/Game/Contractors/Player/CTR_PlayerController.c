@@ -6,6 +6,7 @@ modded class COE_PlayerController
 {
 	protected static ref ScriptInvokerBase<CTR_OperationResultMethod> s_CTR_OnOperationResult;
 	protected static ref CTR_OperationResult s_CTR_LastResult;
+	protected ref CTR_ReturnCountdownHud m_CTR_ReturnHud;
 
 	//------------------------------------------------------------------------------------------------
 	//! Client: fires when the local player receives an operation result.
@@ -22,6 +23,13 @@ modded class COE_PlayerController
 	static CTR_OperationResult CTR_GetLastResult()
 	{
 		return s_CTR_LastResult;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Client: the return countdown of the last result, or null.
+	CTR_ReturnCountdownHud CTR_GetReturnCountdown()
+	{
+		return m_CTR_ReturnHud;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -47,6 +55,8 @@ modded class COE_PlayerController
 		Print(string.Format("[CTR] Operation result received: %1, pay %2, status %3", result.m_sOperationId, result.m_Payout.m_iTotal, typename.EnumToString(CTR_EPayStatus, result.m_ePayStatus)));
 		CTR_GetOnOperationResult().Invoke(result);
 		CTR_ResultDialog.Open(result);
+		// Stays on the HUD when the result screen is closed.
+		m_CTR_ReturnHud = CTR_ReturnCountdownHud.Create(result.m_iReturnDelaySeconds);
 	}
 
 	//------------------------------------------------------------------------------------------------

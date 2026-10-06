@@ -23,6 +23,8 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	protected int m_iWaitedMs;
 	protected int m_iExpectedPay;
 	protected ref CTR_OperationResult m_Result;
+	//! Weak: owned by the player controller.
+	protected CTR_ReturnCountdownHud m_ReturnCountdown;
 
 	//------------------------------------------------------------------------------------------------
 	override int GetTimeoutMs()
@@ -250,13 +252,42 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		CheckInt(result.m_aAreas.Count(), 1, "one AO in the result");
 		Print(CTR_TestRunner.TAG + "flow: result " + result.ToJson());
 
+		// The result screen and the countdown are created right after this event.
+		GetGame().GetCallqueue().CallLater(CloseResultScreen, WAIT_MS);
 		GetGame().GetCallqueue().CallLater(CheckReturn, (result.m_iReturnDelaySeconds + 7) * 1000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CloseResultScreen()
+	{
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			m_ReturnCountdown = controller.CTR_GetReturnCountdown();
+
+		Check(m_ReturnCountdown != null, "return countdown created");
+		if (m_ReturnCountdown)
+			Check(!m_ReturnCountdown.IsShown(), "countdown not on the HUD while the result screen is open");
+
+		CTR_ResultDialog dialog = CTR_ResultDialog.GetOpen();
+		Check(dialog != null, "result screen open");
+		if (dialog)
+			dialog.Close();
+
+		// Closing the result screen moves the countdown to the HUD.
+		GetGame().GetCallqueue().CallLater(CheckCountdownShown, WAIT_MS * 2);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckCountdownShown()
+	{
+		Check(m_ReturnCountdown && m_ReturnCountdown.IsShown(), "countdown on the HUD after the result screen closed");
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void CheckReturn()
 	{
 		Check(m_GameMode.COE_GetState() == COE_EGameModeState.INTERMISSION, "AO ended after the return");
+		Check(!m_ReturnCountdown || !m_ReturnCountdown.IsShown(), "countdown gone after the return");
 		CheckReturnedHost();
 		Finish();
 	}

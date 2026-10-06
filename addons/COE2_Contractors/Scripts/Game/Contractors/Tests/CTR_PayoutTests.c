@@ -89,7 +89,7 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckString(loaded.m_sCurrency, MRX_Settings.DEFAULT_CURRENCY, "config currency");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.CAPTIVE_TASK), 18000, "config capture officer");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.KILL_TASK), 12000, "config kill officer");
-		CheckInt(loaded.m_iReturnDelaySeconds, 10, "config return delay");
+		CheckInt(loaded.m_iReturnDelaySeconds, 30, "config return delay");
 		Finish();
 	}
 }
