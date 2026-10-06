@@ -1,12 +1,12 @@
 //! Shops and prices of the Contractors base, derived from the arsenal data of the vanilla and RHS item catalogs.
-//! Three shops by kind of item (weapons, clothing and gear, supplies), each split into finer categories by arsenal
-//! type and prefab folder. Prices are in USD at about real-world prices (reference prices per weapon family and
+//! Two arsenal shops by kind of item (weapons; clothing, gear and supplies), each split into finer categories by
+//! arsenal type and prefab folder. Prices are in USD at about real-world prices (reference prices per weapon family and
 //! notable item, the rest from the arsenal supply cost); see the plan for the sources and the balance with the pay.
+//! A price also covers the items the prefab comes with (default contents), so buying and selling back never pays.
 class CTR_ShopPricing
 {
 	static const string SHOP_WEAPONS = "contractors_weapons";
-	static const string SHOP_GEAR = "contractors_gear";
-	static const string SHOP_SUPPLIES = "contractors_supplies";
+	static const string SHOP_EQUIPMENT = "contractors_equipment";
 	//! Price of the attachments mounted on a weapon variant, per supply cost point above the bare weapon.
 	static const int VARIANT_PRICE_PER_SUPPLY = 80;
 
@@ -23,7 +23,7 @@ class CTR_ShopPricing
 	static const string CATEGORY_EXPLOSIVES = "Explosives";
 	static const string CATEGORY_HEAVY_WEAPONS = "Heavy weapons";
 
-	// Clothing and gear shop
+	// Equipment shop: clothing and gear
 	static const string CATEGORY_HELMETS = "Helmets";
 	static const string CATEGORY_HEADGEAR = "Headgear";
 	static const string CATEGORY_TOPS = "Shirts & jackets";
@@ -32,7 +32,7 @@ class CTR_ShopPricing
 	static const string CATEGORY_VESTS = "Vests & armor";
 	static const string CATEGORY_BACKPACKS = "Backpacks";
 
-	// Supplies shop
+	// Equipment shop: supplies
 	static const string CATEGORY_MEDICAL = "Medical";
 	static const string CATEGORY_RADIOS = "Radios";
 	static const string CATEGORY_VISION = "Binoculars & NVG";
@@ -155,7 +155,12 @@ class CTR_ShopPricing
 	//------------------------------------------------------------------------------------------------
 	//! \return Price in USD, 0 when the item is not sold. Known items and weapon families have a reference price
 	//! (real-world unit cost or street price, rounded); the rest is priced from their arsenal supply cost.
-	static int GetPrice(ResourceName prefab, SCR_EArsenalItemType type, SCR_EArsenalItemMode mode, int supplyCost)
+	//! \param contentsPrice Price of the items the prefab comes with (mounted attachments, a loaded magazine, armor
+	//! plates, the contents of a kit). The price covers them: it is at least the price at supply cost 0 (the bare
+	//! weapon, the empty carrier) plus the contents. For a weapon family with a reference price they replace the share
+	//! a variant's supply cost adds for its mounted attachments. Otherwise a higher supply cost already prices built-in
+	//! armor, mounted attachments and plates, so the contents only raise the price when they are worth more.
+	static int GetPrice(ResourceName prefab, SCR_EArsenalItemType type, SCR_EArsenalItemMode mode, int supplyCost, int contentsPrice = 0)
 	{
 		string category = GetCategory(prefab, type, mode);
 		if (category.IsEmpty())
@@ -164,11 +169,26 @@ class CTR_ShopPricing
 		string path = prefab;
 		path.ToLower();
 		supplyCost = Math.Max(0, supplyCost);
+		bool ammunition = IsAmmunition(path, mode);
+		int price, ownPrice;
 		CTR_PriceRule rule = FindRule(category, path);
 		if (rule)
-			return rule.GetPrice(supplyCost);
+		{
+			price = rule.GetPrice(supplyCost);
+			ownPrice = rule.GetPrice(0);
+			if (contentsPrice > 0 && rule.m_iBaseCost > 0)
+				return ownPrice + contentsPrice;
+		}
+		else
+		{
+			price = GetFallbackPrice(category, ammunition, supplyCost);
+			ownPrice = GetFallbackPrice(category, ammunition, 0);
+		}
 
-		return GetFallbackPrice(category, IsAmmunition(path, mode), supplyCost);
+		if (contentsPrice > 0)
+			price = Math.Max(price, ownPrice + contentsPrice);
+
+		return price;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -179,13 +199,12 @@ class CTR_ShopPricing
 		if (weapons.Contains(category))
 			return SHOP_WEAPONS;
 
-		array<string> gear = {CATEGORY_HELMETS, CATEGORY_HEADGEAR, CATEGORY_TOPS, CATEGORY_PANTS, CATEGORY_BOOTS_GLOVES, CATEGORY_VESTS, CATEGORY_BACKPACKS};
-		if (gear.Contains(category))
-			return SHOP_GEAR;
-
-		array<string> supplies = {CATEGORY_MEDICAL, CATEGORY_RADIOS, CATEGORY_VISION, CATEGORY_NAVIGATION, CATEGORY_TOOLS, CATEGORY_ACCESSORIES};
-		if (supplies.Contains(category))
-			return SHOP_SUPPLIES;
+		array<string> equipment = {
+			CATEGORY_HELMETS, CATEGORY_HEADGEAR, CATEGORY_TOPS, CATEGORY_PANTS, CATEGORY_BOOTS_GLOVES, CATEGORY_VESTS, CATEGORY_BACKPACKS,
+			CATEGORY_MEDICAL, CATEGORY_RADIOS, CATEGORY_VISION, CATEGORY_NAVIGATION, CATEGORY_TOOLS, CATEGORY_ACCESSORIES
+		};
+		if (equipment.Contains(category))
+			return SHOP_EQUIPMENT;
 
 		return string.Empty;
 	}
@@ -307,9 +326,11 @@ class CTR_ShopPricing
 
 	//------------------------------------------------------------------------------------------------
 	//! Reference prices in USD, rounded: military unit cost where public, otherwise civilian, surplus or black market
-	//! prices (see the plan for the sources). Keywords are matched against the lowercase prefab path in order, so
-	//! specific ones go first. A weapon rule with a base supply cost prices variants with mounted attachments (a
-	//! higher supply cost) above the bare weapon.
+	//! prices (see the plan for the sources). Where the game use is far below the real cost (radios, cosmetic parts,
+	//! electronics) or the real cost differs far from the other side's equivalent (Western weapons, night vision), the
+	//! game use sets the price instead. Keywords are matched against the lowercase prefab path in order, so specific
+	//! ones go first. A weapon rule with a base supply cost prices variants with mounted attachments (a higher supply
+	//! cost) above the bare weapon.
 	protected static map<string, ref array<ref CTR_PriceRule>> CreateRules()
 	{
 		map<string, ref array<ref CTR_PriceRule>> rules = new map<string, ref array<ref CTR_PriceRule>>();
@@ -317,8 +338,8 @@ class CTR_ShopPricing
 		array<ref CTR_PriceRule> rulesRifles = {
 			new CTR_PriceRule("/rifles/m16/", 900, 8),
 			new CTR_PriceRule("/rifles/m4a1/", 1200, 12),
-			new CTR_PriceRule("/rifles/hk416a5/", 3000, 42),
-			new CTR_PriceRule("/rifles/m27iar/", 3000, 10),
+			new CTR_PriceRule("/rifles/hk416a5/", 2000, 42),
+			new CTR_PriceRule("/rifles/m27iar/", 2000, 10),
 			new CTR_PriceRule("/rifles/ak74m/", 800, 10),
 			new CTR_PriceRule("/rifles/ak74/", 600, 10),
 			new CTR_PriceRule("/rifles/aks74un/", 800, 12),
@@ -332,16 +353,16 @@ class CTR_ShopPricing
 
 		array<ref CTR_PriceRule> rulesSniperRifles = {
 			new CTR_PriceRule("/rifles/m14/", 2000, 20),
-			new CTR_PriceRule("/rifles/m40/", 6000, 10),
+			new CTR_PriceRule("/rifles/m40/", 2500, 10),
 			new CTR_PriceRule("/rifles/svd/", 2000, 20),
 			new CTR_PriceRule("/rifles/m16/", 1500, 10)
 		};
 		rules.Insert(CATEGORY_SNIPER_RIFLES, rulesSniperRifles);
 
 		array<ref CTR_PriceRule> rulesMachineGuns = {
-			new CTR_PriceRule("/machineguns/m249/", 4500, 40),
-			new CTR_PriceRule("/machineguns/m240/", 6600, 50),
-			new CTR_PriceRule("/machineguns/m60/", 6000, 50),
+			new CTR_PriceRule("/machineguns/m249/", 3000, 40),
+			new CTR_PriceRule("/machineguns/m240/", 4000, 50),
+			new CTR_PriceRule("/machineguns/m60/", 3800, 50),
 			new CTR_PriceRule("/machineguns/pkm/", 3000, 50),
 			new CTR_PriceRule("/machineguns/rpk74", 1200, 25),
 			new CTR_PriceRule("/machineguns/uk59/", 4000, 50)
@@ -365,24 +386,24 @@ class CTR_ShopPricing
 			new CTR_PriceRule("tbg7v", 1800),
 			new CTR_PriceRule("og7v", 300),
 			new CTR_PriceRule("pg7v", 300),
-			new CTR_PriceRule("container_mk153_hedp", 2000),
-			new CTR_PriceRule("container_mk153_heaa", 2500),
-			new CTR_PriceRule("container_mk153_ne", 4700),
+			new CTR_PriceRule("container_mk153_hedp", 700),
+			new CTR_PriceRule("container_mk153_heaa", 900),
+			new CTR_PriceRule("container_mk153_ne", 1200),
 			new CTR_PriceRule("/launchers/m72/", 1500),
 			new CTR_PriceRule("/launchers/rpg7/", 1000, 55),
 			new CTR_PriceRule("/launchers/rpg22/", 800),
 			new CTR_PriceRule("/launchers/rpg75/", 600),
 			new CTR_PriceRule("/launchers/rpoa/", 3500, 75),
-			new CTR_PriceRule("/launchers/mk153/", 13000, 75),
+			new CTR_PriceRule("/launchers/mk153/", 3000, 75),
 			new CTR_PriceRule("/grenadelaunchers/gm94/", 3000, 90)
 		};
 		rules.Insert(CATEGORY_LAUNCHERS, rulesLaunchers);
 
 		array<ref CTR_PriceRule> rulesOptics = {
-			new CTR_PriceRule("pas13g", 12000),
-			new CTR_PriceRule("reap_ir", 9000),
-			new CTR_PriceRule("infratech1tws", 8000),
-			new CTR_PriceRule("/mbs/", 6000),
+			new CTR_PriceRule("pas13g", 6000),
+			new CTR_PriceRule("reap_ir", 5000),
+			new CTR_PriceRule("infratech1tws", 4500),
+			new CTR_PriceRule("/mbs/", 800),
 			new CTR_PriceRule("m8541", 3500),
 			new CTR_PriceRule("dedal_nv", 3000),
 			new CTR_PriceRule("vc18dsco", 2700),
@@ -424,9 +445,9 @@ class CTR_ShopPricing
 		rules.Insert(CATEGORY_MUZZLE, rulesMuzzle);
 
 		array<ref CTR_PriceRule> rulesAttachments = {
-			new CTR_PriceRule("psq23", 5000),
-			new CTR_PriceRule("anpeq16", 2800),
-			new CTR_PriceRule("anpeq15", 2000),
+			new CTR_PriceRule("psq23", 1500),
+			new CTR_PriceRule("anpeq16", 1200),
+			new CTR_PriceRule("anpeq15", 1000),
 			new CTR_PriceRule("perst", 900),
 			new CTR_PriceRule("ugl_gp25", 500),
 			new CTR_PriceRule("/lights/", 300),
@@ -455,7 +476,7 @@ class CTR_ShopPricing
 		rules.Insert(CATEGORY_EXPLOSIVES, rulesExplosives);
 
 		array<ref CTR_PriceRule> rulesHeavyWeapons = {
-			new CTR_PriceRule("part_m252_", 8000),
+			new CTR_PriceRule("part_m252_", 5000),
 			new CTR_PriceRule("part_2b14_", 3500),
 			new CTR_PriceRule("part_m2_gun", 13000),
 			new CTR_PriceRule("part_m3_tripod", 1500),
@@ -489,8 +510,11 @@ class CTR_ShopPricing
 		};
 		rules.Insert(CATEGORY_MEDICAL, rulesMedical);
 
+		// Covers and bands sit in the helmet folders but protect nothing; the tank helmet's folder looks like theirs.
 		array<ref CTR_PriceRule> rulesHelmets = {
 			new CTR_PriceRule("counterweight", 60),
+			new CTR_PriceRule("tsh4", 80),
+			new CTR_PriceRule("/headgear_", 40),
 			new CTR_PriceRule("helmet_opscore", 1900),
 			new CTR_PriceRule("helmet_caiman", 2000),
 			new CTR_PriceRule("helmet_spartan", 1800),
@@ -512,15 +536,14 @@ class CTR_ShopPricing
 			new CTR_PriceRule("helmet_6b7", 180),
 			new CTR_PriceRule("helmet_pasgt", 150),
 			new CTR_PriceRule("helmet_m1_", 120),
-			new CTR_PriceRule("tsh4", 80),
 			new CTR_PriceRule("helmet_ssh68", 60)
 		};
 		rules.Insert(CATEGORY_HELMETS, rulesHelmets);
 
 		array<ref CTR_PriceRule> rulesHeadgear = {
-			new CTR_PriceRule("headphones_peltor", 600),
-			new CTR_PriceRule("sordin", 400),
-			new CTR_PriceRule("headphones_6m2", 200),
+			new CTR_PriceRule("headphones_peltor", 80),
+			new CTR_PriceRule("sordin", 60),
+			new CTR_PriceRule("headphones_6m2", 40),
 			new CTR_PriceRule("headphones_impact", 70),
 			new CTR_PriceRule("eyewear_6b50", 150),
 			new CTR_PriceRule("mask_6b49", 150),
@@ -603,28 +626,31 @@ class CTR_ShopPricing
 		};
 		rules.Insert(CATEGORY_BACKPACKS, rulesBackpacks);
 
+		// Radios only carry voice, so game use prices them, not their real cost: handhelds by transmitting range (1.3 to
+		// 4 km), backpack radios (2 km, deployable as a respawn point) alike. RHS radio batteries run down.
 		array<ref CTR_PriceRule> rulesRadios = {
-			new CTR_PriceRule("attachment_", 200),
-			new CTR_PriceRule("filbe_backpack_radio", 20000),
-			new CTR_PriceRule("anprc152", 15000),
-			new CTR_PriceRule("r187p1", 3000),
-			new CTR_PriceRule("radio_rf10", 2000),
-			new CTR_PriceRule("r107m", 400),
-			new CTR_PriceRule("anprc77", 350),
+			new CTR_PriceRule("_battery", 30),
+			new CTR_PriceRule("attachment_", 100),
+			new CTR_PriceRule("filbe_backpack_radio", 1200),
+			new CTR_PriceRule("radio_rf10", 1000),
+			new CTR_PriceRule("r107m", 800),
+			new CTR_PriceRule("anprc77", 800),
+			new CTR_PriceRule("r187p1", 600),
+			new CTR_PriceRule("anprc152", 500),
 			new CTR_PriceRule("radio_r148", 250),
 			new CTR_PriceRule("anprc68", 200)
 		};
 		rules.Insert(CATEGORY_RADIOS, rulesRadios);
 
 		array<ref CTR_PriceRule> rulesVision = {
-			new CTR_PriceRule("vector21", 14500),
+			new CTR_PriceRule("vector21", 2000),
 			new CTR_PriceRule("pvs_31_batpack", 300),
-			new CTR_PriceRule("nvg_pvs31", 14000),
-			new CTR_PriceRule("nvg_pvs14dual", 9000),
-			new CTR_PriceRule("nvg_pvs14", 4500),
-			new CTR_PriceRule("1pn138", 4000),
+			new CTR_PriceRule("nvg_pvs31", 5000),
+			new CTR_PriceRule("nvg_pvs14dual", 4000),
+			new CTR_PriceRule("nvg_pvs14", 3000),
+			new CTR_PriceRule("1pn138", 3000),
 			new CTR_PriceRule("thermal_patrolir", 4000),
-			new CTR_PriceRule("geo-onv1", 3500),
+			new CTR_PriceRule("geo-onv1", 2500),
 			new CTR_PriceRule("pdu4", 2000),
 			new CTR_PriceRule("binoculars_m22", 800),
 			new CTR_PriceRule("binoculars_b12", 400),
@@ -639,9 +665,9 @@ class CTR_ShopPricing
 		rules.Insert(CATEGORY_VISION, rulesVision);
 
 		array<ref CTR_PriceRule> rulesNavigation = {
-			new CTR_PriceRule("dagr", 2500),
-			new CTR_PriceRule("orion", 1500),
-			new CTR_PriceRule("garmintactix", 1000),
+			new CTR_PriceRule("dagr", 500),
+			new CTR_PriceRule("orion", 400),
+			new CTR_PriceRule("garmintactix", 200),
 			new CTR_PriceRule("compass", 120),
 			new CTR_PriceRule("watch_", 150),
 			new CTR_PriceRule("map_", 15)
@@ -649,7 +675,7 @@ class CTR_ShopPricing
 		rules.Insert(CATEGORY_NAVIGATION, rulesNavigation);
 
 		array<ref CTR_PriceRule> rulesTools = {
-			new CTR_PriceRule("spectrumdevice", 10000),
+			new CTR_PriceRule("spectrumdevice", 500),
 			new CTR_PriceRule("rearmingkit", 1500),
 			new CTR_PriceRule("repairkit", 1000),
 			new CTR_PriceRule("barbed_tape", 150),

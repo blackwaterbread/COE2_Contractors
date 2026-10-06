@@ -1,18 +1,20 @@
-// Development tool: puts the Contractors shops and stash point into the COE2 main base prefab used by the COE2 worlds
-// (COE_Hideout_01.et), along the wall with the base's arsenal boxes. The override file itself is created in Workbench
-// ("Override in" COE2_Contractors); this adds the children by a text edit, with entity IDs from
-// Workbench.GenerateGloballyUniqueID64(). Only adds what is missing: shops by shop ID, the stash point by prefab.
-// Run "Create Contractors Configs" first, it creates the shop catalogs.
+// Development tool: turns the two FIA arsenal boxes of the COE2 main base prefab used by the COE2 worlds
+// (COE_Hideout_01.et) into the Contractors arsenal shops and puts the stash point next to them. The override file
+// itself is created in Workbench ("Override in" COE2_Contractors); this adds the lines by a text edit, with entity and
+// component IDs from Workbench.GenerateGloballyUniqueID64(). Only adds what is missing: arsenal shops by shop ID, the
+// stash point by prefab. Run "Create Contractors Configs" first, it creates the shop catalogs.
 
 [WorkbenchPluginAttribute(name: "Add Contractors Base Points", category: "Contractors", wbModules: { "WorldEditor" })]
 class CTR_BasePointsPlugin : WorldEditorPlugin
 {
 	static const string TAG = "[CTR_PLUGIN] ";
 	static const string BASE_FILE = "$COE2_Contractors:Prefabs/Compositions/Misc/COE/COE_Hideout_01.et";
-	static const ResourceName SHOP_PREFAB = "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et";
 	static const ResourceName STASH_PREFAB = "{66BACE8BD545B8C2}Prefabs/Marx/Stash/MRX_StashWardrobe.et";
-	//! MRX_ShopComponent entry of MRX_ShopTable.et.
-	static const string SHOP_COMPONENT_ID = "{6A89197001F4D092}";
+	//! Entity IDs of the FIA arsenal boxes in COE_Hideout_01.et (inherited children of the override).
+	static const string WEAPONS_BOX_ID = "60A042236B427BA4";
+	static const string EQUIPMENT_BOX_ID = "61288E8539ECF97D";
+	//! SCR_ArsenalComponent entry of the vanilla arsenal boxes.
+	static const string ARSENAL_COMPONENT_ID = "{56F2C6D1431AD9AF}";
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -62,9 +64,8 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		}
 
 		array<string> children = {};
-		if (!AddShop(children, text, CTR_ShopPricing.SHOP_WEAPONS, "Contractor Armory", "-2.6 0 6.3")
-			|| !AddShop(children, text, CTR_ShopPricing.SHOP_GEAR, "Contractor Outfitter", "4.4 0 6.3")
-			|| !AddShop(children, text, CTR_ShopPricing.SHOP_SUPPLIES, "Contractor Supply", "6.8 0 6.3"))
+		if (!AddArsenalShop(children, text, WEAPONS_BOX_ID, CTR_ShopPricing.SHOP_WEAPONS, "Contractor Armory")
+			|| !AddArsenalShop(children, text, EQUIPMENT_BOX_ID, CTR_ShopPricing.SHOP_EQUIPMENT, "Contractor Outfitter"))
 			return;
 
 		if (!text.Contains(STASH_PREFAB))
@@ -78,7 +79,7 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 
 		if (children.IsEmpty())
 		{
-			Print(TAG + "base override already has the shops and the stash point, not changed");
+			Print(TAG + "base override already has the arsenal shops and the stash point, not changed");
 			return;
 		}
 
@@ -108,13 +109,14 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		}
 
 		writer.Close();
-		Print(TAG + "shops and stash point added to " + absPath);
+		Print(TAG + "arsenal shops and stash point added to " + absPath);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Adds the lines of a shop table unless the override already has a shop with this ID.
+	//! Adds the lines that make an inherited arsenal box a Marx arsenal shop (saved loadouts off) unless the override
+	//! already has a shop with this ID.
 	//! \return False when the shop's catalog does not exist.
-	protected bool AddShop(notnull array<string> children, string text, string shopId, string displayName, string coords)
+	protected bool AddArsenalShop(notnull array<string> children, string text, string boxId, string shopId, string displayName)
 	{
 		if (text.Contains("m_sShopId \"" + shopId + "\""))
 			return true;
@@ -129,22 +131,26 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 			return false;
 		}
 
-		children.Insert("  GenericEntity : \"" + SHOP_PREFAB + "\" {");
-		children.Insert("   ID \"" + NewEntityId() + "\"");
+		children.Insert("  GenericEntity {");
+		children.Insert("   ID \"" + boxId + "\"");
 		children.Insert("   components {");
-		children.Insert("    MRX_ShopComponent \"" + SHOP_COMPONENT_ID + "\" {");
+		children.Insert("    MRX_ArsenalShopComponent \"{" + NewEntityId() + "}\" {");
+		children.Insert("    }");
+		children.Insert("    MRX_ShopComponent \"{" + NewEntityId() + "}\" {");
 		children.Insert("     m_sShopId \"" + shopId + "\"");
 		children.Insert("     m_sDisplayName \"" + displayName + "\"");
 		children.Insert("     m_sCatalog \"" + meta.GetResourceID() + "\"");
 		children.Insert("    }");
+		children.Insert("    SCR_ArsenalComponent \"" + ARSENAL_COMPONENT_ID + "\" {");
+		children.Insert("     m_eArsenalSaveType SAVING_DISABLED");
+		children.Insert("    }");
 		children.Insert("   }");
-		children.Insert("   coords " + coords);
 		children.Insert("  }");
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Entity IDs in prefabs are written without braces.
+	//! Entity IDs in prefabs are written without braces, component IDs with them.
 	protected string NewEntityId()
 	{
 		string id = Workbench.GenerateGloballyUniqueID64();

@@ -5,7 +5,7 @@
 //!   #ctr win       complete every task: pay, result screen, return to base
 //!   #ctr fail      fail every task: the operation finishes without pay
 //!   #ctr cancel    cancel the AO like the commander does
-//!   #ctr base      move next to the base shop
+//!   #ctr base      move next to the base arsenal shops
 //!   #ctr cash [n]  credit n cash to yourself (default 1000)
 class CTR_DevCommand : ScrServerCommand
 {
@@ -122,7 +122,7 @@ class CTR_DevCommand : ScrServerCommand
 		if (!CTR_DevTools.GetShopPos(pos))
 			return Result("no COE2 main base", false);
 
-		return TeleportResult(playerId, pos, "you are at the base shop");
+		return TeleportResult(playerId, pos, "you are at the base arsenal shops");
 	}
 
 	//------------------------------------------------------------------------------------------------

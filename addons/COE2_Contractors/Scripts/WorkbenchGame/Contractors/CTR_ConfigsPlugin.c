@@ -25,6 +25,12 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const string SYSTEMS_FILE = "$COE2_Contractors:Configs/Contractors/Systems/CTR_Systems.conf";
 	static const string PAY_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_Settings.conf";
 	static const string SHOP_DIR = "$COE2_Contractors:Configs/Contractors/Shop/";
+	//! Default contents of the shop items (MRX_ShopContentsCheck report written by the test CTR_Test_ShopContents),
+	//! relative to the addon directory: kept in the repo's tools folder, outside the packed addon.
+	static const string DEFAULT_CONTENTS_FILE = "../../tools/shop-default-contents.csv";
+	//! Columns of the report: prefab and the semicolon-separated content prefabs.
+	protected static const int CONTENTS_COLUMN_PREFAB = 1;
+	protected static const int CONTENTS_COLUMN_CONTENTS = 11;
 
 	static const int STARTING_CASH = 5000;
 
@@ -75,15 +81,13 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		if (shopId == CTR_ShopPricing.SHOP_WEAPONS)
 			return SHOP_DIR + "CTR_ShopWeapons.conf";
 
-		if (shopId == CTR_ShopPricing.SHOP_GEAR)
-			return SHOP_DIR + "CTR_ShopGear.conf";
-
-		return SHOP_DIR + "CTR_ShopSupplies.conf";
+		return SHOP_DIR + "CTR_ShopEquipment.conf";
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! One catalog per shop with every item that has arsenal data in the vanilla and RHS faction item catalogs, priced
-	//! and sorted into categories by CTR_ShopPricing. Generated catalogs are rewritten in place (same resource GUID).
+	//! and sorted into categories by CTR_ShopPricing. Prices cover the default contents (DEFAULT_CONTENTS_FILE), priced
+	//! from the catalogs of both shops. Generated catalogs are rewritten in place (same resource GUID).
 	protected void CreateShopCatalogs()
 	{
 		array<ResourceName> sources = {
@@ -98,6 +102,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		};
 
 		array<ref MRX_ShopItem> items = {};
+		array<ref CTR_ShopItemSource> itemSources = {};
 		array<string> prefabKeys = {};
 		array<string> ids = {};
 		foreach (ResourceName source : sources)
@@ -118,14 +123,19 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 
 				foreach (SCR_EntityCatalogEntry entry : list.m_aEntities)
 				{
-					MRX_ShopItem item = CreateShopItem(entry, prefabKeys, ids);
-					if (item)
-						items.Insert(item);
+					CTR_ShopItemSource itemSource = CreateShopItem(entry, prefabKeys, ids);
+					if (!itemSource)
+						continue;
+
+					items.Insert(itemSource.m_Item);
+					itemSources.Insert(itemSource);
 				}
 			}
 		}
 
-		array<string> shops = {CTR_ShopPricing.SHOP_WEAPONS, CTR_ShopPricing.SHOP_GEAR, CTR_ShopPricing.SHOP_SUPPLIES};
+		AddDefaultContents(itemSources);
+
+		array<string> shops = {CTR_ShopPricing.SHOP_WEAPONS, CTR_ShopPricing.SHOP_EQUIPMENT};
 		foreach (string shop : shops)
 		{
 			array<ref MRX_ShopItem> shopItems = {};
@@ -152,8 +162,93 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Raises the prices of the items that come with other items (DEFAULT_CONTENTS_FILE) so that they cover them. The
+	//! contents count at their price without contents, so contents of contents count once.
+	protected void AddDefaultContents(notnull array<ref CTR_ShopItemSource> itemSources)
+	{
+		map<string, ref array<ResourceName>> contents = LoadDefaultContents();
+		if (!contents)
+			return;
+
+		map<string, int> prices = new map<string, int>();
+		foreach (CTR_ShopItemSource itemSource : itemSources)
+		{
+			prices.Insert(MRX_ShopCatalog.GetPrefabKey(itemSource.m_Item.m_sPrefab), itemSource.m_Item.m_iPrice);
+		}
+
+		int raised;
+		foreach (CTR_ShopItemSource itemSource : itemSources)
+		{
+			MRX_ShopItem item = itemSource.m_Item;
+			array<ResourceName> itemContents = contents.Get(MRX_ShopCatalog.GetPrefabKey(item.m_sPrefab));
+			if (!itemContents)
+				continue;
+
+			int contentsPrice;
+			foreach (ResourceName content : itemContents)
+			{
+				contentsPrice += prices.Get(MRX_ShopCatalog.GetPrefabKey(content));
+			}
+
+			int price = CTR_ShopPricing.GetPrice(item.m_sPrefab, itemSource.m_eType, itemSource.m_eMode, itemSource.m_iSupplyCost, contentsPrice);
+			if (price > item.m_iPrice)
+				raised++;
+
+			item.m_iPrice = price;
+		}
+
+		Print(TAG + string.Format("default contents: %1 items listed, %2 prices raised", contents.Count(), raised));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Content prefabs by prefab key (MRX_ShopCatalog.GetPrefabKey) of the items that have contents, or null
+	//! when the file is missing.
+	protected map<string, ref array<ResourceName>> LoadDefaultContents()
+	{
+		string gproj;
+		Workbench.GetAbsolutePath("$COE2_Contractors:addon.gproj", gproj, true);
+		string path = FilePath.Concat(FilePath.StripFileName(gproj), DEFAULT_CONTENTS_FILE);
+		FileHandle reader = FileIO.OpenFile(path, FileMode.READ);
+		if (!reader)
+		{
+			Print(TAG + "no default contents file " + path + ", prices do not cover default contents", LogLevel.WARNING);
+			return null;
+		}
+
+		map<string, ref array<ResourceName>> contents = new map<string, ref array<ResourceName>>();
+		string line;
+		bool header = true;
+		while (reader.ReadLine(line) >= 0)
+		{
+			if (header)
+			{
+				header = false;
+				continue;
+			}
+
+			array<string> columns = {};
+			line.Split(",", columns, false);
+			if (columns.Count() <= CONTENTS_COLUMN_CONTENTS || columns[CONTENTS_COLUMN_CONTENTS].IsEmpty())
+				continue;
+
+			array<string> prefabs = {};
+			columns[CONTENTS_COLUMN_CONTENTS].Split(";", prefabs, true);
+			array<ResourceName> itemContents = {};
+			foreach (string prefab : prefabs)
+			{
+				itemContents.Insert(prefab);
+			}
+
+			contents.Set(MRX_ShopCatalog.GetPrefabKey(columns[CONTENTS_COLUMN_PREFAB]), itemContents);
+		}
+
+		reader.Close();
+		return contents;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return Null for disabled entries, items without arsenal data, items not sold, and prefabs already added.
-	protected MRX_ShopItem CreateShopItem(SCR_EntityCatalogEntry entry, notnull array<string> prefabKeys, notnull array<string> ids)
+	protected CTR_ShopItemSource CreateShopItem(SCR_EntityCatalogEntry entry, notnull array<string> prefabKeys, notnull array<string> ids)
 	{
 		if (!entry || !entry.IsEnabled())
 			return null;
@@ -169,7 +264,8 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 
 		SCR_EArsenalItemType type = arsenal.GetItemType();
 		SCR_EArsenalItemMode mode = arsenal.GetItemMode();
-		int price = CTR_ShopPricing.GetPrice(prefab, type, mode, arsenal.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, false));
+		int supplyCost = arsenal.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, false);
+		int price = CTR_ShopPricing.GetPrice(prefab, type, mode, supplyCost);
 		if (price <= 0)
 			return null;
 
@@ -189,7 +285,13 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		item.m_iPrice = price;
 		item.m_iSellPrice = -1;
 		item.m_iStock = -1;
-		return item;
+
+		CTR_ShopItemSource itemSource = new CTR_ShopItemSource();
+		itemSource.m_Item = item;
+		itemSource.m_eType = type;
+		itemSource.m_eMode = mode;
+		itemSource.m_iSupplyCost = supplyCost;
+		return itemSource;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -412,4 +514,14 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		else
 			Print(TAG + step + " FAILED", LogLevel.ERROR);
 	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! A generated shop item with the arsenal data it was priced from.
+class CTR_ShopItemSource
+{
+	ref MRX_ShopItem m_Item;
+	SCR_EArsenalItemType m_eType;
+	SCR_EArsenalItemMode m_eMode;
+	int m_iSupplyCost;
 }

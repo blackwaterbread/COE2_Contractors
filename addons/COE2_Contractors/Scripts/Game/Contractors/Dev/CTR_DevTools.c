@@ -126,7 +126,7 @@ class CTR_DevTools
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return A free spot next to the base shop, or the base itself; false without a main base.
+	//! \return A free spot next to the base arsenal shops, or the base itself; false without a main base.
 	static bool GetShopPos(out vector pos)
 	{
 		COE_GameMode gameMode = COE_GameMode.GetInstance();
@@ -134,7 +134,7 @@ class CTR_DevTools
 			return false;
 
 		pos = gameMode.GetMainBasePos();
-		IEntity shop = FindNear(pos, 40, MRX_ShopComponent);
+		IEntity shop = FindNear(pos, 40, MRX_ArsenalShopComponent);
 		if (shop)
 			pos = shop.GetOrigin();
 

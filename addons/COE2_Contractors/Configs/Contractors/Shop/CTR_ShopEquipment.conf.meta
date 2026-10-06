@@ -1,5 +1,5 @@
 MetaFileClass {
- Name "{164B96404CBB390F}Configs/Contractors/Shop/CTR_ShopGear.conf"
+ Name "{752628B13CDA64F6}Configs/Contractors/Shop/CTR_ShopEquipment.conf"
  Configurations {
   CONFResourceClass PC {
   }
