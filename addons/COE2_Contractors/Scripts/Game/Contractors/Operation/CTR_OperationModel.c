@@ -15,6 +15,8 @@ class CTR_TaskOutcome : Managed
 	bool m_bFailed;
 	//! Pay per participant; 0 unless completed.
 	int m_iAmount;
+	//! What the task pays per participant when it is completed, whatever its state.
+	int m_iReward;
 }
 
 //------------------------------------------------------------------------------------------------
@@ -117,6 +119,8 @@ class CTR_OperationResult : Managed
 
 	ref CTR_PlayerStats m_Stats;
 	ref CTR_Payout m_Payout;
+	//! In progress: the total if every task that has not failed gets completed, with the personal lines so far.
+	int m_iTotalIfAllCompleted;
 	CTR_EPayStatus m_ePayStatus;
 	string m_sCurrency;
 	bool m_bHasBalance;

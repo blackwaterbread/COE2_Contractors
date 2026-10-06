@@ -245,6 +245,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 			Check(status.m_Stats.m_bEnteredAO, "live: entered the AO");
 			CheckInt(status.CountCompletedTasks(), 0, "live: no task completed yet");
 			CheckInt(status.m_Payout.m_iTotal, 0, "live: nothing paid before a task is completed");
+			CheckInt(status.m_iTotalIfAllCompleted, m_iExpectedPay, "live: pay if every task is completed");
 		}
 
 		array<COE_AO> aos = m_GameMode.GetCurrentAOs();

@@ -82,6 +82,7 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckInt(tasks[1].m_iAmount, 18000, "capture officer (prefab entry before the builder entry)");
 		CheckInt(tasks[2].m_iAmount, 12000, "kill officer (builder entry)");
 		CheckInt(tasks[3].m_iAmount, 0, "failed task pays nothing");
+		CheckInt(tasks[3].m_iReward, 20000, "reward known for a task not completed");
 		CheckInt(tasks[4].m_iAmount, settings.m_iDefaultTaskReward, "unknown builder pays the default");
 		CheckInt(sum, 6000 + 18000 + 12000 + 6000, "sum of completed tasks");
 
@@ -131,6 +132,12 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		CheckInt(soFar.m_iTotal, 0, "so far: nothing paid before a task is completed");
 		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 6000, active).m_iTotal, CTR_PayoutCalculator.Calculate(settings, 6000, active).m_iTotal, "so far: the pay once a task is completed");
 		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 0, CTR_PayoutTests.CreateStats(false, 4)).m_iKills, 0, "so far: no lines outside the AO");
+
+		// If every task still possible is completed.
+		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 14000, active), 14000 + 1000 + 600 - 2500, "all completed: tasks and personal lines");
+		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 14000, CTR_PayoutTests.CreateStats(false, 4)), 14000 + 1000, "all completed: counts as entering the AO");
+		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 0, active), 0, "all completed: nothing when every task failed");
+		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 6000, CTR_PayoutTests.CreateStats(true, 0, 1)), 0, "all completed: not below 0");
 		Finish();
 	}
 }
@@ -161,6 +168,8 @@ class CTR_Test_SettlementInProgress : CTR_TestCase
 		CheckInt(result.m_Payout.m_iTotal, 0, "nothing paid before a task is completed");
 		CheckInt(result.m_ePayStatus, CTR_EPayStatus.NONE, "not paid");
 		CheckInt(result.m_iReturnDelaySeconds, 0, "no loot time while it runs");
+		CheckInt(result.m_aTasks[0].m_iReward, 6000, "reward of the open task");
+		CheckInt(result.m_iTotalIfAllCompleted, 6000 + 3 * 250, "if every task still possible is completed (the failed one does not count)");
 		Finish();
 	}
 }
@@ -340,6 +349,7 @@ class CTR_Test_ResultJson : CTR_TestCase
 		result.m_aAreas.Insert(area);
 		CTR_TaskOutcome task = CTR_PayoutTests.CreateTask("COE_ClearAreaTaskBuilder", true);
 		task.m_iAmount = 150;
+		task.m_iReward = 150;
 		task.m_fX = 4010;
 		result.m_aTasks.Insert(task);
 		CTR_TaskOutcome failed = CTR_PayoutTests.CreateTask("COE_FindIntelTaskBuilder", false);
@@ -348,6 +358,7 @@ class CTR_Test_ResultJson : CTR_TestCase
 		result.m_Stats = CTR_PayoutTests.CreateStats(true, 7, 1, 2, 3);
 		result.m_Stats.m_fDistance = 1500.5;
 		result.m_Payout = CTR_PayoutCalculator.Calculate(CTR_Settings.CreateDefault(), 150, result.m_Stats);
+		result.m_iTotalIfAllCompleted = 9000;
 		result.m_ePayStatus = CTR_EPayStatus.PAID;
 		result.m_bHasBalance = true;
 		result.m_iBalance = 420;
@@ -368,12 +379,14 @@ class CTR_Test_ResultJson : CTR_TestCase
 			if (loaded.m_aTasks.Count() == 2)
 			{
 				CheckInt(loaded.m_aTasks[0].m_iAmount, 150, "task amount");
+				CheckInt(loaded.m_aTasks[0].m_iReward, 150, "task reward");
 				Check(loaded.m_aTasks[0].m_bCompleted, "task completed");
 				Check(loaded.m_aTasks[1].m_bFailed && !loaded.m_aTasks[1].m_bCompleted, "task failed");
 			}
 
 			CheckInt(loaded.m_Stats.m_iKills, 7, "kills");
 			CheckInt(loaded.m_Payout.m_iTotal, result.m_Payout.m_iTotal, "total");
+			CheckInt(loaded.m_iTotalIfAllCompleted, 9000, "total if every task is completed");
 			CheckInt(loaded.m_ePayStatus, CTR_EPayStatus.PAID, "status");
 			CheckInt(loaded.m_iBalance, 420, "balance");
 			CheckInt(loaded.m_iReturnDelaySeconds, 10, "return delay");

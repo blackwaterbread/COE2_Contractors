@@ -9,21 +9,50 @@ class CTR_PayoutCalculator
 	static const string LEDGER_SOURCE = "coe2_contractors";
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets m_iAmount of every task from the settings and returns the sum of the completed ones.
+	//! Sets m_iReward of every task and m_iAmount of the completed ones from the settings. \return Sum of the completed.
 	static int PriceTasks(notnull CTR_Settings settings, notnull array<ref CTR_TaskOutcome> tasks)
 	{
 		int sum;
 		foreach (CTR_TaskOutcome task : tasks)
 		{
+			task.m_iReward = settings.GetTaskReward(task.m_sType, task.m_sTaskPrefab);
 			task.m_iAmount = 0;
 			if (!task.m_bCompleted)
 				continue;
 
-			task.m_iAmount = settings.GetTaskReward(task.m_sType, task.m_sTaskPrefab);
+			task.m_iAmount = task.m_iReward;
 			sum += task.m_iAmount;
 		}
 
 		return sum;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Task pay if every task that has not failed gets completed (after PriceTasks).
+	static int SumRewardsStillPossible(notnull array<ref CTR_TaskOutcome> tasks)
+	{
+		int sum;
+		foreach (CTR_TaskOutcome task : tasks)
+		{
+			if (!task.m_bFailed)
+				sum += task.m_iReward;
+		}
+
+		return sum;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Running operation: the total if every task still possible gets completed, with the personal lines so far. Counts
+	//! as if the player enters the AO, which they must to be paid.
+	static int CalculateIfAllCompleted(notnull CTR_Settings settings, int possibleTaskPay, notnull CTR_PlayerStats stats)
+	{
+		if (possibleTaskPay <= 0)
+			return 0;
+
+		CTR_Payout payout = new CTR_Payout();
+		payout.m_iTasks = possibleTaskPay;
+		SetPersonalLines(settings, stats, payout);
+		return GetTotal(payout);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -35,8 +64,15 @@ class CTR_PayoutCalculator
 
 		payout.m_iTasks = taskPay;
 		SetPersonalLines(settings, stats, payout);
-		payout.m_iTotal = Math.Max(0, payout.m_iTasks + payout.m_iKills + payout.m_iHeals + payout.m_iTeamKills + payout.m_iDeaths);
+		payout.m_iTotal = GetTotal(payout);
 		return payout;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sum of the lines, never below 0.
+	protected static int GetTotal(notnull CTR_Payout payout)
+	{
+		return Math.Max(0, payout.m_iTasks + payout.m_iKills + payout.m_iHeals + payout.m_iTeamKills + payout.m_iDeaths);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -24,6 +24,11 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected SCR_ButtonTextComponent m_ReturnButton;
 	protected TextWidget m_wReturnStatus;
 	protected VerticalLayoutWidget m_wList;
+	//! In progress: the times count up while the screen is open.
+	protected int m_iOpenTick;
+	protected TextWidget m_wAreas;
+	protected TextWidget m_wPersonalTime;
+	protected TextWidget m_wOperationTime;
 
 	//! The open result screen, if any (weak).
 	protected static CTR_ResultDialog s_Instance;
@@ -37,6 +42,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 
 		CTR_ResultDialog dialog = new CTR_ResultDialog();
 		dialog.m_Result = result;
+		dialog.m_iOpenTick = System.GetTickCount();
 		OpenDialog(dialog, GetTitle(result), DIALOG_TAG, DIALOG_LAYOUT_MEDIUM);
 		s_Instance = dialog;
 		return dialog;
@@ -73,11 +79,11 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	{
 		SetDialogWidth(WINDOW_WIDTH);
 
-		TextWidget areas = AddHeaderLine(GetAreaNames());
-		SetColor(areas, COLOR_MUTED);
+		m_wAreas = AddHeaderLine(GetAreaNames());
+		SetColor(m_wAreas, COLOR_MUTED);
 		if (m_Result.m_bInProgress)
 		{
-			TextWidget note = AddHeaderLine("Paid when the operation ends. Amounts as if it ended now.");
+			TextWidget note = AddHeaderLine("Paid when the operation ends.");
 			SetColor(note, COLOR_MUTED);
 		}
 		else
@@ -93,6 +99,33 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddPersonalStats();
 		AddTasks();
 		AddTeamTotals();
+
+		if (m_Result.m_bInProgress)
+			GetGame().GetCallqueue().CallLater(UpdateElapsed, 1000, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! In progress: seconds since the screen opened, added to the times of the operation. 0 for a result.
+	protected int GetElapsedSeconds()
+	{
+		if (!m_Result.m_bInProgress)
+			return 0;
+
+		return (System.GetTickCount() - m_iOpenTick) / 1000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateElapsed()
+	{
+		if (m_wAreas)
+			m_wAreas.SetText(GetAreaNames());
+
+		int elapsed = GetElapsedSeconds();
+		if (m_wPersonalTime)
+			m_wPersonalTime.SetText(FormatDuration(m_Result.m_Stats.m_iSeconds + elapsed));
+
+		if (m_wOperationTime)
+			m_wOperationTime.SetText(FormatDuration(m_Result.m_iDurationSeconds + elapsed));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -161,6 +194,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	override void OnMenuClose()
 	{
 		GetGame().GetCallqueue().Remove(UpdateCountdown);
+		GetGame().GetCallqueue().Remove(UpdateElapsed);
 		if (s_Instance == this)
 			s_Instance = null;
 
@@ -208,7 +242,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			names += WidgetManager.Translate(area.m_sName);
 		}
 
-		return string.Format("%1  |  %2", names, FormatDuration(m_Result.m_iDurationSeconds));
+		return string.Format("%1  |  %2", names, FormatDuration(m_Result.m_iDurationSeconds + GetElapsedSeconds()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -228,6 +262,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 				AddPayLines();
 
 			AddLine("If it ended now", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
+			AddLine("If every task is completed", FormatAmount(m_Result.m_iTotalIfAllCompleted, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfAllCompleted), SECTION_FONT_SIZE);
 			return;
 		}
 
@@ -307,7 +342,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddLine("Deaths", stats.m_iDeaths.ToString());
 		AddLine("Shots fired", stats.m_iShots.ToString());
 		AddLine("Distance", FormatDistance(stats.m_fDistance));
-		AddLine("Time in the operation", FormatDuration(stats.m_iSeconds));
+		m_wPersonalTime = AddLine("Time in the operation", FormatDuration(stats.m_iSeconds + GetElapsedSeconds()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -334,6 +369,10 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 				color = COLOR_MUTED;
 			}
 
+			// While it runs, what each task is worth.
+			if (m_Result.m_bInProgress && !task.m_bFailed)
+				outcome = string.Format("%1   %2", FormatAmount(task.m_iReward, m_Result.m_sCurrency), outcome);
+
 			AddLine(string.Format("%1  (grid %2)", WidgetManager.Translate(task.m_sName), FormatGrid(task.m_fX, task.m_fZ)), outcome, color);
 		}
 	}
@@ -348,7 +387,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			AddLine("Team total if it ended now", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		else
 			AddLine("Total earned", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
-		AddLine("Operation time", FormatDuration(m_Result.m_iDurationSeconds));
+		m_wOperationTime = AddLine("Operation time", FormatDuration(m_Result.m_iDurationSeconds + GetElapsedSeconds()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -361,8 +400,8 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Label on the left, value on the right.
-	protected void AddLine(string label, string value, int valueColor = Color.WHITE)
+	//! Label on the left, value on the right. \param fontSize 0 keeps the dialog's size. \return The value text.
+	protected TextWidget AddLine(string label, string value, int valueColor = Color.WHITE, int fontSize = 0)
 	{
 		Widget row = CreateLayout(WidgetType.HorizontalLayoutWidgetTypeID, m_wList);
 		AlignableSlot.SetHorizontalAlign(row, LayoutHorizontalAlign.Stretch);
@@ -371,6 +410,13 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		TextWidget valueText = CreateText(row, value);
 		SetColor(valueText, valueColor);
 		AlignableSlot.SetPadding(valueText, 16, 0, 8, 0);
+		if (fontSize > 0)
+		{
+			labelText.SetExactFontSize(fontSize);
+			valueText.SetExactFontSize(fontSize);
+		}
+
+		return valueText;
 	}
 
 	//------------------------------------------------------------------------------------------------

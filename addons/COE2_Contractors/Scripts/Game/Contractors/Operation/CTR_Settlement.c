@@ -5,6 +5,8 @@ class CTR_PayEntry : Managed
 	ref array<int> m_aPlayerIds = {};
 	ref CTR_PlayerStats m_Stats;
 	ref CTR_Payout m_Payout;
+	//! In progress only.
+	int m_iTotalIfAllCompleted;
 	CTR_EPayStatus m_eStatus;
 	bool m_bHasBalance;
 	int m_iBalance;
@@ -141,12 +143,17 @@ class CTR_Settlement : Managed
 			entry.m_aPlayerIds.Insert(playerId);
 		}
 
+		int possibleTaskPay = CTR_PayoutCalculator.SumRewardsStillPossible(m_aTasks);
 		foreach (CTR_PayEntry entry : m_aEntries)
 		{
-			if (m_bInProgress)
-				entry.m_Payout = CTR_PayoutCalculator.CalculateSoFar(m_Settings, m_iTaskPay, entry.m_Stats);
-			else
+			if (!m_bInProgress)
+			{
 				entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats);
+				continue;
+			}
+
+			entry.m_Payout = CTR_PayoutCalculator.CalculateSoFar(m_Settings, m_iTaskPay, entry.m_Stats);
+			entry.m_iTotalIfAllCompleted = CTR_PayoutCalculator.CalculateIfAllCompleted(m_Settings, possibleTaskPay, entry.m_Stats);
 		}
 	}
 
@@ -316,6 +323,7 @@ class CTR_Settlement : Managed
 
 			result.m_Stats = entry.m_Stats;
 			result.m_Payout = entry.m_Payout;
+			result.m_iTotalIfAllCompleted = entry.m_iTotalIfAllCompleted;
 			result.m_ePayStatus = entry.m_eStatus;
 			result.m_bHasBalance = entry.m_bHasBalance;
 			result.m_iBalance = entry.m_iBalance;
