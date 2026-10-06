@@ -40,10 +40,10 @@ class CTR_StashPageProduct : MRX_ShopProduct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Text of the shop window, e.g. "Stash: 3 / 8 pages".
+	//! Text of the shop window, e.g. "Stash: 3 / 8 pages", translated on each client.
 	static string FormatState(int pages, int maxPages)
 	{
-		return string.Format("Stash: %1 / %2 pages", pages, maxPages);
+		return MRX_TextFormat.PackLocalized("#CTR-Shop_StashPages", {pages.ToString(), maxPages.ToString()});
 	}
 }
 

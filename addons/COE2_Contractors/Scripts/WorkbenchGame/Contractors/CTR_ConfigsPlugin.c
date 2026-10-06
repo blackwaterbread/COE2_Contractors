@@ -97,9 +97,9 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		CTR_StashPageProduct product = new CTR_StashPageProduct();
 		product.m_iMaxPages = 8;
 		MRX_ShopItem item = MRX_ShopItem.Create("stash_page", "{06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et", 1000000, CTR_Settings.Get().m_sCurrency, 0);
-		item.m_sName = "Stash Expansion";
-		item.m_sCategory = "Stash";
-		item.m_sDescription = "One more page of 6 x 8 cells in your stash, up to 8 pages";
+		item.m_sName = "#CTR-Shop_StashExpansion";
+		item.m_sCategory = "#CTR-Category_Stash";
+		item.m_sDescription = "#CTR-Shop_StashExpansionDesc";
 		item.m_Product = product;
 
 		MRX_ShopCatalog catalog = new MRX_ShopCatalog();

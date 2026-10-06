@@ -81,8 +81,8 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		}
 
 		array<string> children = {};
-		if (!AddArsenalShop(children, text, WEAPONS_BOX_ID, CTR_ShopPricing.SHOP_WEAPONS, "Weapon Shop", WEAPONS_DECAL)
-			|| !AddArsenalShop(children, text, EQUIPMENT_BOX_ID, CTR_ShopPricing.SHOP_EQUIPMENT, "Equipment Shop", EQUIPMENT_DECAL))
+		if (!AddArsenalShop(children, text, WEAPONS_BOX_ID, CTR_ShopPricing.SHOP_WEAPONS, "#CTR-Shop_Weapons", WEAPONS_DECAL)
+			|| !AddArsenalShop(children, text, EQUIPMENT_BOX_ID, CTR_ShopPricing.SHOP_EQUIPMENT, "#CTR-Shop_Equipment", EQUIPMENT_DECAL))
 			return;
 
 		if (!text.Contains(STASH_PREFAB))
@@ -241,7 +241,7 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		array<ref ContainerIdPathEntry> shopPath = { new ContainerIdPathEntry("MRX_ShopComponent") };
 		Log("MRX_ShopComponent", api.CreateComponent(source, "MRX_ShopComponent") != null);
 		Log("m_sShopId", api.SetVariableValue(source, shopPath, "m_sShopId", CTR_ShopPricing.SHOP_SERVICES));
-		Log("m_sDisplayName", api.SetVariableValue(source, shopPath, "m_sDisplayName", "Quartermaster"));
+		Log("m_sDisplayName", api.SetVariableValue(source, shopPath, "m_sDisplayName", "#CTR-Shop_Quartermaster"));
 		Log("m_sCatalog", api.SetVariableValue(source, shopPath, "m_sCatalog", catalog));
 		Log("m_bAllowSell", api.SetVariableValue(source, shopPath, "m_bAllowSell", "0"));
 		Log("m_fMaxDistance", api.SetVariableValue(source, shopPath, "m_fMaxDistance", "3"));
@@ -254,7 +254,7 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		Log("ParentContextList", api.SetVariableValue(source, actionPath, "ParentContextList", "default"));
 		Log("UIInfo", api.CreateObjectVariableMember(source, actionPath, "UIInfo", "UIInfo"));
 		array<ref ContainerIdPathEntry> uiInfoPath = { new ContainerIdPathEntry("ActionsManagerComponent"), new ContainerIdPathEntry("additionalActions", 0), new ContainerIdPathEntry("UIInfo") };
-		Log("UIInfo.Name", api.SetVariableValue(source, uiInfoPath, "Name", "Talk to the Quartermaster"));
+		Log("UIInfo.Name", api.SetVariableValue(source, uiInfoPath, "Name", "#CTR-Shop_TalkQuartermaster"));
 
 		Log("CreateEntityTemplate", api.CreateEntityTemplate(source, absPath));
 		api.DeleteEntity(source);

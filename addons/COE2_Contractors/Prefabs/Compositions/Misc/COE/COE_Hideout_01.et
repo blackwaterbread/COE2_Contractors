@@ -13,7 +13,7 @@ COE_MainBaseEntity {
     }
     MRX_ShopComponent "{6A8CDA998BAA5420}" {
      m_sShopId "contractors_weapons"
-     m_sDisplayName "Weapon Shop"
+     m_sDisplayName "#CTR-Shop_Weapons"
      m_sCatalog "{E78639FD8B162FF9}Configs/Contractors/Shop/CTR_ShopWeapons.conf"
     }
     SCR_ArsenalComponent "{56F2C6D1431AD9AF}" {
@@ -34,7 +34,7 @@ COE_MainBaseEntity {
     UniversalInventoryStorageComponent "{56F2C6D15FE6C4CE}" {
      Attributes SCR_ItemAttributeCollection "{56F2C6D6A36680FB}" {
       ItemDisplayName SCR_InventoryUIInfo "{56F2C6D6A229E091}" {
-       Name "Weapon Shop"
+       Name "#CTR-Shop_Weapons"
       }
      }
     }
@@ -47,7 +47,7 @@ COE_MainBaseEntity {
     }
     MRX_ShopComponent "{6A8CDA998BAA5E50}" {
      m_sShopId "contractors_equipment"
-     m_sDisplayName "Equipment Shop"
+     m_sDisplayName "#CTR-Shop_Equipment"
      m_sCatalog "{752628B13CDA64F6}Configs/Contractors/Shop/CTR_ShopEquipment.conf"
     }
     SCR_ArsenalComponent "{56F2C6D1431AD9AF}" {
@@ -68,7 +68,7 @@ COE_MainBaseEntity {
     UniversalInventoryStorageComponent "{56F2C6D15FE6C4CE}" {
      Attributes SCR_ItemAttributeCollection "{56F2C6D6A36680FB}" {
       ItemDisplayName SCR_InventoryUIInfo "{56F2C6D6A229E091}" {
-       Name "Equipment Shop"
+       Name "#CTR-Shop_Equipment"
       }
      }
     }

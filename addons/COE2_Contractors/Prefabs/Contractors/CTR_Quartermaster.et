@@ -3,7 +3,7 @@ SCR_ChimeraCharacter : "{DE15FB5FAFC3E63F}Prefabs/Characters/Factions/BLUFOR/US_
  components {
   MRX_ShopComponent "{6A8D25295593D79F}" {
    m_sShopId "contractors_services"
-   m_sDisplayName "Quartermaster"
+   m_sDisplayName "#CTR-Shop_Quartermaster"
    m_sCatalog "{0C5226906912C24A}Configs/Contractors/Shop/CTR_ShopServices.conf"
    m_bAllowSell 0
    m_fMaxDistance 3
@@ -17,7 +17,7 @@ SCR_ChimeraCharacter : "{DE15FB5FAFC3E63F}Prefabs/Characters/Factions/BLUFOR/US_
       "default"
      }
      UIInfo UIInfo "{6A8D252955D1B8D1}" {
-      Name "Talk to the Quartermaster"
+      Name "#CTR-Shop_TalkQuartermaster"
      }
     }
    }

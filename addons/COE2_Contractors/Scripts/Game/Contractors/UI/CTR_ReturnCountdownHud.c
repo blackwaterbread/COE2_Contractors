@@ -96,7 +96,7 @@ class CTR_ReturnCountdownHud : Managed
 		AlignableSlot.SetPadding(column, 20 + ACCENT_WIDTH, 8, 20, 10);
 
 		TextWidget title = CreateText(column, TITLE_FONT_SIZE, GetAccentColor());
-		title.SetText("RETURNING TO BASE");
+		title.SetText("#CTR-Return_HudTitle");
 		AlignableSlot.SetHorizontalAlign(title, LayoutHorizontalAlign.Center);
 		m_wTime = CreateText(column, TIME_FONT_SIZE, Color.FromInt(Color.WHITE));
 		AlignableSlot.SetHorizontalAlign(m_wTime, LayoutHorizontalAlign.Center);

@@ -3,21 +3,74 @@ GameProject {
  GUID "6A8AE49001FAD827"
  TITLE "COE2_Contractors"
  Dependencies {
-  "58D0FB3206B6F859"
-  "60926835F4A7B0CA"
-  "6A885105A7EC72B9"
-  "6A8A0C05BCEEF932"
-  "6A885683BA928BB5"
-  "6A8A0C37A19F762B"
-  "595F2BF2F44836FB"
-  "6586079789278413"
-  "65AD7D4F994EA327"
+  "58D0FB3206B6F859" "60926835F4A7B0CA" "6A885105A7EC72B9" "6A8A0C05BCEEF932" "6A885683BA928BB5" "6A8A0C37A19F762B" "595F2BF2F44836FB" "6586079789278413" "65AD7D4F994EA327"
  }
  Configurations {
   GameProjectConfig PC {
    SystemModuleSettings SystemModuleSettings "{5F10A1570304557B}" {
     Configs + {
      "{A1CC3EA4DB33787D}Configs/Contractors/Systems/CTR_Systems.conf"
+    }
+   }
+   WidgetManagerSettings WidgetManagerSettings "{AC4BE58770485E02}" {
+    StringTables {
+     StringTableDefinition "{6A8E4595CE3034ED}" {
+      StringTableSource "{4EE89DE46C69AA22}Language/CTR_localization.st"
+      Languages {
+       LanguageDefinition "{6A8E4595DB112753}" {
+        Code "cs_cz"
+        StringTableRuntime "{C1436131CF9B208A}Language/CTR_localization.cs_cz.conf"
+       }
+       LanguageDefinition "{6A8E4595DB11277D}" {
+        Code "de_de"
+        StringTableRuntime "{143D7B02DC3831AA}Language/CTR_localization.de_de.conf"
+       }
+       LanguageDefinition "{6A8E4595DB11268D}" {
+        Code "en_us"
+        StringTableRuntime "{4ACDF149B6CB34AB}Language/CTR_localization.en_us.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126BE}" {
+        Code "es_es"
+        StringTableRuntime "{8F81BCC058C95FB4}Language/CTR_localization.es_es.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126AF}" {
+        Code "fr_fr"
+        StringTableRuntime "{342949F7BE4ABCB6}Language/CTR_localization.fr_fr.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126DE}" {
+        Code "it_it"
+        StringTableRuntime "{B435C6C313683F4F}Language/CTR_localization.it_it.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126CF}" {
+        Code "ja_jp"
+        StringTableRuntime "{A42E7B512D190FE4}Language/CTR_localization.ja_jp.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126FA}" {
+        Code "ko_kr"
+        StringTableRuntime "{049053FDBE340CDB}Language/CTR_localization.ko_kr.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1126EA}" {
+        Code "pl_pl"
+        StringTableRuntime "{58E1F50700DB90A7}Language/CTR_localization.pl_pl.conf"
+       }
+       LanguageDefinition "{6A8E4595DB112615}" {
+        Code "pt_br"
+        StringTableRuntime "{8D966FCB3B255A1D}Language/CTR_localization.pt_br.conf"
+       }
+       LanguageDefinition "{6A8E4595DB11260E}" {
+        Code "ru_ru"
+        StringTableRuntime "{D8D77B63A65C3F6B}Language/CTR_localization.ru_ru.conf"
+       }
+       LanguageDefinition "{6A8E4595DB1129E9}" {
+        Code "uk_ua"
+        StringTableRuntime "{528F2E95CA72813E}Language/CTR_localization.uk_ua.conf"
+       }
+       LanguageDefinition "{6A8E4595DB11291F}" {
+        Code "zh_cn"
+        StringTableRuntime "{883F40A8F3D25123}Language/CTR_localization.zh_cn.conf"
+       }
+      }
+     }
     }
    }
   }

@@ -58,20 +58,20 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static string GetTitle(CTR_OperationResult result)
 	{
 		if (result.m_bInProgress)
-			return "Operation in progress";
+			return "#CTR-Result_TitleInProgress";
 
 		if (!result.m_bFinished)
 		{
 			if (result.IsSuccess())
-				return "Operation ended early";
+				return "#CTR-Result_TitleEndedEarly";
 
-			return "Operation cancelled";
+			return "#CTR-Result_TitleCancelled";
 		}
 
 		if (!result.IsSuccess())
-			return "Operation failed";
+			return "#CTR-Result_TitleFailed";
 
-		return "Operation complete";
+		return "#CTR-Result_TitleComplete";
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		SetColor(m_wAreas, COLOR_MUTED);
 		if (m_Result.m_bInProgress)
 		{
-			TextWidget note = AddHeaderLine("Paid when the operation ends.");
+			TextWidget note = AddHeaderLine("#CTR-Result_PaidAtEnd");
 			SetColor(note, COLOR_MUTED);
 		}
 		else
@@ -143,7 +143,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (GetReturnSecondsLeft() > 0)
 		{
 			Widget row = CreateLayout(WidgetType.HorizontalLayoutWidgetTypeID, m_wHeader);
-			m_ReturnButton = AddButton(row, "Return to base now", ACTION_RETURN);
+			m_ReturnButton = AddButton(row, "#CTR-Result_ReturnNow", ACTION_RETURN);
 			if (m_ReturnButton)
 			{
 				TextWidget buttonText = TextWidget.Cast(m_ReturnButton.GetRootWidget().FindAnyWidget("Text"));
@@ -216,11 +216,11 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		int remaining = GetReturnSecondsLeft();
 		if (remaining > 0)
 		{
-			m_wCountdown.SetText(string.Format("Everyone in the AO returns to base in %1", FormatDuration(remaining)));
+			m_wCountdown.SetText(WidgetManager.Translate("#CTR-Result_ReturnCountdown", FormatDuration(remaining)));
 			return;
 		}
 
-		m_wCountdown.SetText("Returned to base");
+		m_wCountdown.SetText("#CTR-Result_Returned");
 		if (m_ReturnButton)
 			m_ReturnButton.GetRootWidget().SetVisible(false);
 
@@ -252,32 +252,32 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		CTR_PlayerStats stats = m_Result.m_Stats;
 		if (m_Result.m_bInProgress)
 		{
-			AddSection("Earnings so far");
+			AddSection("#CTR-Result_EarningsSoFar");
 			if (!stats.m_bEnteredAO)
-				AddLine("You have not entered the AO yet. Only contractors who enter it are paid.", string.Empty, COLOR_MUTED);
+				AddLine("#CTR-Result_NotEnteredYet", string.Empty, COLOR_MUTED);
 			else if (payout.m_iTasks <= 0)
-				AddLine("No task completed yet. Nothing is paid until one is.", string.Empty, COLOR_MUTED);
+				AddLine("#CTR-Result_NoTaskYet", string.Empty, COLOR_MUTED);
 
 			if (stats.m_bEnteredAO)
 				AddPayLines();
 
-			AddLine("If it ended now", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
-			AddLine("If every task is completed", FormatAmount(m_Result.m_iTotalIfAllCompleted, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfAllCompleted), SECTION_FONT_SIZE);
+			AddLine("#CTR-Result_IfEndedNow", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
+			AddLine("#CTR-Result_IfAllCompleted", FormatAmount(m_Result.m_iTotalIfAllCompleted, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfAllCompleted), SECTION_FONT_SIZE);
 			return;
 		}
 
-		AddSection("Earnings");
+		AddSection("#CTR-Result_Earnings");
 		if (!m_Result.m_bFinished)
-			AddLine("Ended before all tasks were finished: completed tasks still pay.", string.Empty, COLOR_MUTED);
+			AddLine("#CTR-Result_EndedEarlyNote", string.Empty, COLOR_MUTED);
 
 		if (!stats.m_bEnteredAO)
-			AddLine("You did not enter the AO.", string.Empty, COLOR_MUTED);
+			AddLine("#CTR-Result_NotEntered", string.Empty, COLOR_MUTED);
 		else if (payout.m_iTasks <= 0)
-			AddLine("No task was completed.", string.Empty, COLOR_MUTED);
+			AddLine("#CTR-Result_NoTask", string.Empty, COLOR_MUTED);
 		else
 			AddPayLines();
 
-		AddLine("Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
+		AddLine("#CTR-Result_Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
 		AddLine(GetPayStatusText(), GetBalanceText(), COLOR_MUTED);
 	}
 
@@ -293,10 +293,10 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 				AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount, m_Result.m_sCurrency), COLOR_GAIN);
 		}
 
-		AddCountLine("Kills", stats.m_iKills, payout.m_iKills);
-		AddCountLine("Bandages and CPR", stats.m_iHeals, payout.m_iHeals);
-		AddCountLine("Friendly or civilian kills", stats.m_iTeamKills, payout.m_iTeamKills);
-		AddCountLine("Deaths", stats.m_iDeaths, payout.m_iDeaths);
+		AddCountLine("#CTR-Result_Kills", stats.m_iKills, payout.m_iKills);
+		AddCountLine("#CTR-Result_Heals", stats.m_iHeals, payout.m_iHeals);
+		AddCountLine("#CTR-Result_TeamKills", stats.m_iTeamKills, payout.m_iTeamKills);
+		AddCountLine("#CTR-Result_Deaths", stats.m_iDeaths, payout.m_iDeaths);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -305,7 +305,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (count == 0)
 			return;
 
-		AddLine(string.Format("%1 x%2", label, count), FormatAmount(amount, m_Result.m_sCurrency), GetAmountColor(amount));
+		AddLine(string.Format("%1 x%2", WidgetManager.Translate(label), count), FormatAmount(amount, m_Result.m_sCurrency), GetAmountColor(amount));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -313,14 +313,14 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	{
 		switch (m_Result.m_ePayStatus)
 		{
-			case CTR_EPayStatus.PAID: return "Paid";
-			case CTR_EPayStatus.ALREADY_PAID: return "Already paid";
-			case CTR_EPayStatus.NO_OWNER: return "Not paid: no player identity";
-			case CTR_EPayStatus.FAILED: return "Not paid: storage error";
-			case CTR_EPayStatus.PENDING: return "Payment pending";
+			case CTR_EPayStatus.PAID: return "#CTR-Result_Paid";
+			case CTR_EPayStatus.ALREADY_PAID: return "#CTR-Result_AlreadyPaid";
+			case CTR_EPayStatus.NO_OWNER: return "#CTR-Result_NoOwner";
+			case CTR_EPayStatus.FAILED: return "#CTR-Result_PayFailed";
+			case CTR_EPayStatus.PENDING: return "#CTR-Result_PayPending";
 		}
 
-		return "Nothing to pay";
+		return "#CTR-Result_NothingToPay";
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -329,65 +329,65 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (!m_Result.m_bHasBalance)
 			return string.Empty;
 
-		return "Balance " + MRX_TextFormat.Money(m_Result.m_iBalance, m_Result.m_sCurrency);
+		return WidgetManager.Translate("#CTR-Result_Balance", MRX_TextFormat.Money(m_Result.m_iBalance, m_Result.m_sCurrency));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void AddPersonalStats()
 	{
-		AddSection("Your operation");
+		AddSection("#CTR-Result_YourOperation");
 		CTR_PlayerStats stats = m_Result.m_Stats;
-		AddLine("Kills", stats.m_iKills.ToString());
-		AddLine("Bandages and CPR", stats.m_iHeals.ToString());
-		AddLine("Deaths", stats.m_iDeaths.ToString());
-		AddLine("Shots fired", stats.m_iShots.ToString());
-		AddLine("Distance", FormatDistance(stats.m_fDistance));
-		m_wPersonalTime = AddLine("Time in the operation", FormatDuration(stats.m_iSeconds + GetElapsedSeconds()));
+		AddLine("#CTR-Result_Kills", stats.m_iKills.ToString());
+		AddLine("#CTR-Result_Heals", stats.m_iHeals.ToString());
+		AddLine("#CTR-Result_Deaths", stats.m_iDeaths.ToString());
+		AddLine("#CTR-Result_Shots", stats.m_iShots.ToString());
+		AddLine("#CTR-Result_Distance", FormatDistance(stats.m_fDistance));
+		m_wPersonalTime = AddLine("#CTR-Result_PersonalTime", FormatDuration(stats.m_iSeconds + GetElapsedSeconds()));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void AddTasks()
 	{
-		AddSection("Tasks");
+		AddSection("#CTR-Result_Tasks");
 		foreach (CTR_TaskOutcome task : m_Result.m_aTasks)
 		{
-			string outcome = "Failed";
+			string outcome = "#CTR-Result_TaskFailed";
 			int color = COLOR_LOSS;
 			if (task.m_bCompleted)
 			{
-				outcome = "Completed";
+				outcome = "#CTR-Result_TaskCompleted";
 				color = COLOR_GAIN;
 			}
 			else if (m_Result.m_bInProgress && !task.m_bFailed)
 			{
-				outcome = "In progress";
+				outcome = "#CTR-Result_TaskInProgress";
 				color = COLOR_MUTED;
 			}
 			else if (!m_Result.m_bFinished && !task.m_bFailed)
 			{
-				outcome = "Not finished";
+				outcome = "#CTR-Result_TaskNotFinished";
 				color = COLOR_MUTED;
 			}
 
 			// While it runs, what each task is worth.
 			if (m_Result.m_bInProgress && !task.m_bFailed)
-				outcome = string.Format("%1   %2", FormatAmount(task.m_iReward, m_Result.m_sCurrency), outcome);
+				outcome = string.Format("%1   %2", FormatAmount(task.m_iReward, m_Result.m_sCurrency), WidgetManager.Translate(outcome));
 
-			AddLine(string.Format("%1  (grid %2)", WidgetManager.Translate(task.m_sName), FormatGrid(task.m_fX, task.m_fZ)), outcome, color);
+			AddLine(WidgetManager.Translate("#CTR-Result_TaskGrid", WidgetManager.Translate(task.m_sName), FormatGrid(task.m_fX, task.m_fZ)), outcome, color);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void AddTeamTotals()
 	{
-		AddSection("Team");
-		AddLine("Tasks completed", string.Format("%1 / %2", m_Result.CountCompletedTasks(), m_Result.m_aTasks.Count()));
-		AddLine("Contractors in the AO", m_Result.m_iParticipants.ToString());
+		AddSection("#CTR-Result_Team");
+		AddLine("#CTR-Result_TasksCompleted", string.Format("%1 / %2", m_Result.CountCompletedTasks(), m_Result.m_aTasks.Count()));
+		AddLine("#CTR-Result_Participants", m_Result.m_iParticipants.ToString());
 		if (m_Result.m_bInProgress)
-			AddLine("Team total if it ended now", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
+			AddLine("#CTR-Result_TeamIfEndedNow", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		else
-			AddLine("Total earned", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
-		m_wOperationTime = AddLine("Operation time", FormatDuration(m_Result.m_iDurationSeconds + GetElapsedSeconds()));
+			AddLine("#CTR-Result_TeamTotal", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
+		m_wOperationTime = AddLine("#CTR-Result_OperationTime", FormatDuration(m_Result.m_iDurationSeconds + GetElapsedSeconds()));
 	}
 
 	//------------------------------------------------------------------------------------------------

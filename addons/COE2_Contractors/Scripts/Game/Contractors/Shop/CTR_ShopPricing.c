@@ -13,34 +13,34 @@ class CTR_ShopPricing
 	static const int VARIANT_PRICE_PER_SUPPLY = 80;
 
 	// Weapons shop
-	static const string CATEGORY_RIFLES = "Rifles";
-	static const string CATEGORY_SNIPER_RIFLES = "Sniper rifles";
-	static const string CATEGORY_MACHINE_GUNS = "Machine guns";
-	static const string CATEGORY_PISTOLS = "Pistols";
-	static const string CATEGORY_LAUNCHERS = "Launchers";
-	static const string CATEGORY_AMMUNITION = "Ammunition";
-	static const string CATEGORY_OPTICS = "Optics";
-	static const string CATEGORY_MUZZLE = "Muzzle";
-	static const string CATEGORY_ATTACHMENTS = "Attachments";
-	static const string CATEGORY_EXPLOSIVES = "Explosives";
-	static const string CATEGORY_HEAVY_WEAPONS = "Heavy weapons";
+	static const string CATEGORY_RIFLES = "#CTR-Category_Rifles";
+	static const string CATEGORY_SNIPER_RIFLES = "#CTR-Category_SniperRifles";
+	static const string CATEGORY_MACHINE_GUNS = "#CTR-Category_MachineGuns";
+	static const string CATEGORY_PISTOLS = "#CTR-Category_Pistols";
+	static const string CATEGORY_LAUNCHERS = "#CTR-Category_Launchers";
+	static const string CATEGORY_AMMUNITION = "#CTR-Category_Ammunition";
+	static const string CATEGORY_OPTICS = "#CTR-Category_Optics";
+	static const string CATEGORY_MUZZLE = "#CTR-Category_Muzzle";
+	static const string CATEGORY_ATTACHMENTS = "#CTR-Category_Attachments";
+	static const string CATEGORY_EXPLOSIVES = "#CTR-Category_Explosives";
+	static const string CATEGORY_HEAVY_WEAPONS = "#CTR-Category_HeavyWeapons";
 
 	// Equipment shop: clothing and gear
-	static const string CATEGORY_HELMETS = "Helmets";
-	static const string CATEGORY_HEADGEAR = "Headgear";
-	static const string CATEGORY_TOPS = "Shirts & jackets";
-	static const string CATEGORY_PANTS = "Pants";
-	static const string CATEGORY_BOOTS_GLOVES = "Boots & gloves";
-	static const string CATEGORY_VESTS = "Vests & armor";
-	static const string CATEGORY_BACKPACKS = "Backpacks";
+	static const string CATEGORY_HELMETS = "#CTR-Category_Helmets";
+	static const string CATEGORY_HEADGEAR = "#CTR-Category_Headgear";
+	static const string CATEGORY_TOPS = "#CTR-Category_Tops";
+	static const string CATEGORY_PANTS = "#CTR-Category_Pants";
+	static const string CATEGORY_BOOTS_GLOVES = "#CTR-Category_BootsGloves";
+	static const string CATEGORY_VESTS = "#CTR-Category_Vests";
+	static const string CATEGORY_BACKPACKS = "#CTR-Category_Backpacks";
 
 	// Equipment shop: supplies
-	static const string CATEGORY_MEDICAL = "Medical";
-	static const string CATEGORY_RADIOS = "Radios";
-	static const string CATEGORY_VISION = "Binoculars & NVG";
-	static const string CATEGORY_NAVIGATION = "Navigation";
-	static const string CATEGORY_TOOLS = "Tools";
-	static const string CATEGORY_ACCESSORIES = "Accessories";
+	static const string CATEGORY_MEDICAL = "#CTR-Category_Medical";
+	static const string CATEGORY_RADIOS = "#CTR-Category_Radios";
+	static const string CATEGORY_VISION = "#CTR-Category_Vision";
+	static const string CATEGORY_NAVIGATION = "#CTR-Category_Navigation";
+	static const string CATEGORY_TOOLS = "#CTR-Category_Tools";
+	static const string CATEGORY_ACCESSORIES = "#CTR-Category_Accessories";
 
 	//! Vehicle and helicopter parts and ammunition are not personal gear.
 	protected static const int EXCLUDED_TYPES = SCR_EArsenalItemType.HELICOPTER | SCR_EArsenalItemType.VEHICLE;

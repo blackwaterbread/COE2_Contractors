@@ -33,7 +33,7 @@ class CTR_SafeZone
 			return;
 
 		s_iLastHintTick = now;
-		SCR_HintManagerComponent.ShowCustomHint("Weapons cannot be fired in the safehouse.", "Safe zone", 4);
+		SCR_HintManagerComponent.ShowCustomHint("#CTR-Hint_SafeZone", "#CTR-Hint_SafeZoneTitle", 4);
 	}
 }
 

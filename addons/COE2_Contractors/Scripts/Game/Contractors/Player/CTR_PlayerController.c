@@ -120,7 +120,7 @@ modded class COE_PlayerController
 	{
 		if (json.IsEmpty())
 		{
-			SCR_HintManagerComponent.ShowCustomHint("No operation is running.", "Operation", 4);
+			SCR_HintManagerComponent.ShowCustomHint("#CTR-Hint_NoOperation", "#CTR-Pause_Operation", 4);
 			return;
 		}
 
@@ -186,7 +186,7 @@ modded class COE_PlayerController
 		if (dialog)
 			dialog.ShowReturnStatus(text);
 		else
-			SCR_HintManagerComponent.ShowCustomHint(text, "Return to base", 4);
+			SCR_HintManagerComponent.ShowCustomHint(text, "#CTR-Hint_ReturnTitle", 4);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -194,13 +194,13 @@ modded class COE_PlayerController
 	{
 		switch (status)
 		{
-			case CTR_EReturnStatus.NOT_NOW: return "You can only return once the operation is over.";
-			case CTR_EReturnStatus.DEAD: return "You are dead: you respawn at the base.";
-			case CTR_EReturnStatus.NOT_DRIVER: return "Only the driver takes the vehicle back. Get out to return on your own.";
-			case CTR_EReturnStatus.AT_BASE: return "You are already at the base.";
+			case CTR_EReturnStatus.NOT_NOW: return "#CTR-Return_NotNow";
+			case CTR_EReturnStatus.DEAD: return "#CTR-Return_Dead";
+			case CTR_EReturnStatus.NOT_DRIVER: return "#CTR-Return_NotDriver";
+			case CTR_EReturnStatus.AT_BASE: return "#CTR-Return_AtBase";
 		}
 
-		return "The return to base failed.";
+		return "#CTR-Return_Failed";
 	}
 
 	//------------------------------------------------------------------------------------------------
