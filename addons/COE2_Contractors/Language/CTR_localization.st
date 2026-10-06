@@ -220,7 +220,7 @@ StringTable {
   CustomStringTableItem "{6A8E48E58DEFB153}" {
    Id "CTR-Hint_SafeZone"
    Target_en_us "Weapons cannot be fired in the safehouse."
-   Target_ko_kr "은신처에서는 무기를 발사할 수 없습니다."
+   Target_ko_kr "안전 가옥에서는 무기를 발사할 수 없습니다."
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
