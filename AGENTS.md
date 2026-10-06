@@ -56,6 +56,7 @@ LICENSE, AGENTS.md         repo root, not packed
 - Follow BI Enforce Script conventions: `m_` member prefix + type letter (`m_iCount`, `m_sName`, `m_bActive`, `m_aItems`, `m_mLookup`), `s_` statics, `UPPER_CASE` constants, PascalCase methods.
 - Mind `ref` ownership on `Managed` members; avoid strong ref cycles.
 - Code, comments, identifiers: English.
+- UI text: string table keys `#CTR-<Area>_<Name>` in `addons/COE2_Contractors/Language/CTR_localization.st` (English + Korean), never hard-coded English. Shop categories are keys too (`CTR_ShopPricing.CATEGORY_*`). Texts with values: `WidgetManager.Translate(key, args)`; texts the server builds for clients: `MRX_TextFormat.PackLocalized`. After editing the table in the String Editor: Table > Build Runtime Table.
 - Commit titles use Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`).
 
 ## Resources & GUIDs
