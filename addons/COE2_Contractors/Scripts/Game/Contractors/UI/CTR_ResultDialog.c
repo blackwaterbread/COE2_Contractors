@@ -5,10 +5,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static const string DIALOG_TAG = "CTR_Result";
 	protected static const float WINDOW_WIDTH = 900;
 	//! Room for the title, header and footer; the list takes the rest of the screen height.
-	protected static const float RESERVED_HEIGHT = 340;
+	protected static const float RESERVED_HEIGHT = 370;
 	protected static const float MIN_LIST_HEIGHT = 240;
 	protected static const float MAX_LIST_HEIGHT = 640;
 	protected static const int SECTION_FONT_SIZE = 24;
+	//! The return countdown must be noticed: everyone is moved when it runs out.
+	protected static const int COUNTDOWN_FONT_SIZE = 34;
 	protected static const int COLOR_GAIN = 0xFF80D080;
 	protected static const int COLOR_LOSS = 0xFFE06060;
 	protected static const int COLOR_MUTED = 0xFFA0A0A0;
@@ -63,6 +65,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		TextWidget areas = AddHeaderLine(GetAreaNames());
 		SetColor(areas, COLOR_MUTED);
 		m_wCountdown = AddHeaderLine(string.Empty);
+		if (m_wCountdown)
+		{
+			m_wCountdown.SetExactFontSize(COUNTDOWN_FONT_SIZE);
+			SetColor(m_wCountdown, COLOR_SECTION);
+			AlignableSlot.SetPadding(m_wCountdown, 0, 6, 0, 6);
+		}
 		UpdateCountdown();
 
 		m_wList = CreateScrollList(m_wRows, Math.Clamp(GetScreenHeight() - RESERVED_HEIGHT, MIN_LIST_HEIGHT, MAX_LIST_HEIGHT));
