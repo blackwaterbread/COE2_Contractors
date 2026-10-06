@@ -12,6 +12,7 @@ class CTR_TaskOutcome : Managed
 	float m_fX;
 	float m_fZ;
 	bool m_bCompleted;
+	bool m_bFailed;
 	//! Pay per participant; 0 unless completed.
 	int m_iAmount;
 }
@@ -97,10 +98,12 @@ enum CTR_EPayStatus
 }
 
 //------------------------------------------------------------------------------------------------
-//! The result screen of one player.
+//! The result screen of one player, or the state of a running operation so far.
 class CTR_OperationResult : Managed
 {
 	string m_sOperationId;
+	//! The operation still runs: the pay is what it would be if it ended now, nothing is paid yet.
+	bool m_bInProgress;
 	//! All tasks finished (false: ended early by the commander).
 	bool m_bFinished;
 	int m_iDurationSeconds;
@@ -118,7 +121,7 @@ class CTR_OperationResult : Managed
 	string m_sCurrency;
 	bool m_bHasBalance;
 	int m_iBalance;
-	//! Seconds until everyone returns to base; 0 = no return.
+	//! Seconds until everyone left in the AO returns to base (loot time); 0 = no return.
 	int m_iReturnDelaySeconds;
 
 	//------------------------------------------------------------------------------------------------

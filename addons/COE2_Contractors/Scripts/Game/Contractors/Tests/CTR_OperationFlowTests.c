@@ -6,17 +6,22 @@ class CTR_OperationFlowTests
 	static void Register(notnull CTR_TestRunner runner)
 	{
 		runner.Add(new CTR_Test_OperationFlow());
+		runner.Add(new CTR_Test_ReturnOnFoot());
 		runner.Add(new CTR_Test_VehicleReturn());
+		runner.Add(new CTR_Test_CancelInVehicle());
 	}
 }
 
 //------------------------------------------------------------------------------------------------
-//! Generates an AO, moves the host into it, completes every task and checks pay, result and return to base.
+//! Generates an AO, moves the host into it, checks the live operation screen, completes every task and checks pay,
+//! result, the loot time and the return to base when it runs out.
 class CTR_Test_OperationFlow : CTR_TestCase
 {
 	protected static const float MIN_BASE_DISTANCE = 800;
 	protected static const int WAIT_MS = 500;
 	protected static const int MAX_OWNER_WAIT_MS = 20000;
+	//! Loot time of the shipped config, put back after each test.
+	protected static int s_iConfiguredLootSeconds = -1;
 
 	protected COE_GameMode m_GameMode;
 	protected int m_iPlayerId;
@@ -33,8 +38,19 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Short, so the test sees the AO end when the loot time runs out.
+	protected int GetLootSeconds()
+	{
+		return 6;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
+		if (s_iConfiguredLootSeconds < 0)
+			s_iConfiguredLootSeconds = CTR_Settings.Get().m_iReturnDelaySeconds;
+
+		CTR_Settings.Get().m_iReturnDelaySeconds = GetLootSeconds();
 		m_GameMode = COE_GameMode.GetInstance();
 		if (!m_GameMode)
 		{
@@ -59,7 +75,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		{
 			// Workbench creates the host character directly; a real spawn sets it as the main entity.
 			COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(m_iPlayerId));
-			if (controller && !controller.CTR_TestHasMainEntity())
+			if (controller && !controller.CTR_HasMainEntity())
 				controller.SetInitialMainEntity(GetCharacter());
 
 			GenerateAO();
@@ -222,6 +238,15 @@ class CTR_Test_OperationFlow : CTR_TestCase
 
 		Check(participant && participant.m_Stats.m_bEnteredAO, "entering the AO was tracked");
 
+		CTR_OperationResult status = m_GameMode.CTR_BuildStatus(m_iPlayerId);
+		Check(status && status.m_bInProgress, "live operation screen while it runs");
+		if (status)
+		{
+			Check(status.m_Stats.m_bEnteredAO, "live: entered the AO");
+			CheckInt(status.CountCompletedTasks(), 0, "live: no task completed yet");
+			CheckInt(status.m_Payout.m_iTotal, 0, "live: nothing paid before a task is completed");
+		}
+
 		array<COE_AO> aos = m_GameMode.GetCurrentAOs();
 		foreach (COE_AO ao : aos)
 		{
@@ -248,13 +273,31 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		Check(result.m_Payout.m_iTotal > 0, "something paid");
 		Check(result.m_ePayStatus == CTR_EPayStatus.PAID, "pay committed, status " + typename.EnumToString(CTR_EPayStatus, result.m_ePayStatus));
 		Check(result.m_bHasBalance, "balance known");
-		CheckInt(result.m_iReturnDelaySeconds, CTR_Settings.Get().m_iReturnDelaySeconds, "return delay");
+		CheckInt(result.m_iReturnDelaySeconds, GetLootSeconds(), "loot time");
 		CheckInt(result.m_aAreas.Count(), 1, "one AO in the result");
 		Print(CTR_TestRunner.TAG + "flow: result " + result.ToJson());
 
-		// The result screen and the countdown are created right after this event.
+		// The result screen and the countdown are created right after this event, the loot time starts after it.
 		GetGame().GetCallqueue().CallLater(CloseResultScreen, WAIT_MS);
-		GetGame().GetCallqueue().CallLater(CheckReturn, (result.m_iReturnDelaySeconds + 7) * 1000);
+		GetGame().GetCallqueue().CallLater(DuringLootTime, WAIT_MS * 3);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The host stays in the AO: everyone returns when the loot time runs out.
+	protected void DuringLootTime()
+	{
+		CheckLootTime();
+		GetGame().GetCallqueue().CallLater(CheckReturn, (GetLootSeconds() + 7) * 1000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckLootTime()
+	{
+		Check(m_GameMode.COE_GetState() == COE_EGameModeState.EXECUTION, "AO stays during the loot time");
+		CTR_OperationResult status = m_GameMode.CTR_BuildStatus(m_iPlayerId);
+		Check(status && !status.m_bInProgress, "operation screen shows the result during the loot time");
+		if (status)
+			Check(status.m_iReturnDelaySeconds > 0 && status.m_iReturnDelaySeconds <= GetLootSeconds(), "result with the loot time left: " + status.m_iReturnDelaySeconds);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -308,16 +351,75 @@ class CTR_Test_OperationFlow : CTR_TestCase
 
 		Finish();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Finish()
+	{
+		if (s_iConfiguredLootSeconds >= 0)
+			CTR_Settings.Get().m_iReturnDelaySeconds = s_iConfiguredLootSeconds;
+
+		super.Finish();
+	}
 }
 //------------------------------------------------------------------------------------------------
-//! Like the operation flow, but the host drives a vehicle in the AO and another vehicle stays empty there:
-//! the driven vehicle returns to the base with the host inside and is kept, the empty one is deleted as in COE2.
+//! The host returns on foot during the loot time: COE2's fast travel takes them to the base, and the AO ends right
+//! away as nobody is left in it.
+class CTR_Test_ReturnOnFoot : CTR_Test_OperationFlow
+{
+	//------------------------------------------------------------------------------------------------
+	//! Long, so an end of the AO within the test comes from nobody being left in it.
+	override protected int GetLootSeconds()
+	{
+		return 120;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DuringLootTime()
+	{
+		CheckLootTime();
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			controller.CTR_RequestReturnNow();
+
+		GetGame().GetCallqueue().CallLater(CheckReturn, 9000);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Like the operation flow, but the host drives a vehicle in the AO and another vehicle stays empty there. During the
+//! loot time the host returns now: the vehicle goes to the base with the host inside, the AO ends right away as nobody
+//! is left in it, the driven vehicle is kept and the empty one is deleted as in COE2.
 class CTR_Test_VehicleReturn : CTR_Test_OperationFlow
 {
 	protected static const ResourceName VEHICLE = "{259EE7B78C51B624}Prefabs/Vehicles/Wheeled/UAZ469/UAZ469.et";
 
 	protected IEntity m_Driven;
 	protected IEntity m_LeftBehind;
+
+	//------------------------------------------------------------------------------------------------
+	//! Long, so an end of the AO within the test comes from nobody being left in it.
+	override protected int GetLootSeconds()
+	{
+		return 120;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DuringLootTime()
+	{
+		CheckLootTime();
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			controller.CTR_RequestReturnNow();
+
+		GetGame().GetCallqueue().CallLater(CheckDrivenBack, WAIT_MS * 2);
+		GetGame().GetCallqueue().CallLater(CheckReturn, 7000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckDrivenBack()
+	{
+		Check(m_Driven && vector.DistanceXZ(m_Driven.GetOrigin(), m_GameMode.GetMainBasePos()) < 120, "returned now: vehicle at the base");
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnEnteredAO(vector pos)
@@ -364,6 +466,34 @@ class CTR_Test_VehicleReturn : CTR_Test_OperationFlow
 }
 
 //------------------------------------------------------------------------------------------------
+//! The commander ends the AO while the host drives a vehicle in it: the vehicle comes back with the host and is kept,
+//! like at the end of a finished operation, and the empty one is deleted.
+class CTR_Test_CancelInVehicle : CTR_Test_VehicleReturn
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void CompleteTasks()
+	{
+		SCR_ChimeraCharacter character = GetCharacter();
+		Check(character && character.IsInVehicle(), "host in the vehicle before the end");
+		m_GameMode.ExecuteCommanderRequest(COE_ECommanderRequest.CANCEL_AO);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnResult(CTR_OperationResult result)
+	{
+		COE_PlayerController.CTR_GetOnOperationResult().Remove(OnResult);
+		Check(!result.m_bFinished, "operation ended early");
+		CheckInt(result.m_iReturnDelaySeconds, 0, "no loot time when the commander ends the AO");
+
+		CTR_ResultDialog dialog = CTR_ResultDialog.GetOpen();
+		if (dialog)
+			dialog.Close();
+
+		GetGame().GetCallqueue().CallLater(CheckReturn, 6000);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
 //! Test only: sets the factions without COE2's side effects (respawning every player, cancelling the AO).
 modded class COE_FactionManager
 {
@@ -389,15 +519,6 @@ modded class COE_FactionManager
 		}
 
 		Replication.BumpMe();
-	}
-}
-//------------------------------------------------------------------------------------------------
-modded class COE_PlayerController
-{
-	//------------------------------------------------------------------------------------------------
-	bool CTR_TestHasMainEntity()
-	{
-		return m_MainEntity != null;
 	}
 }
 #endif

@@ -48,6 +48,8 @@ class CTR_Settlement : Managed
 	protected ref CTR_Settings m_Settings;
 	protected string m_sOperationId;
 	protected bool m_bFinished;
+	//! Live view of a running operation; never paid.
+	protected bool m_bInProgress;
 	protected int m_iDurationSeconds;
 	protected int m_iTaskPay;
 	protected ref array<ref CTR_AreaInfo> m_aAreas;
@@ -69,6 +71,15 @@ class CTR_Settlement : Managed
 		m_aAreas = areas;
 		m_aTasks = tasks;
 		m_iTaskPay = CTR_PayoutCalculator.PriceTasks(settings, tasks);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! What everyone would get if the running operation ended now (CTR_PayoutCalculator.CalculateSoFar). Not for Pay().
+	static CTR_Settlement CreateInProgress(notnull CTR_Settings settings, string operationId, int durationSeconds, notnull array<ref CTR_AreaInfo> areas, notnull array<ref CTR_TaskOutcome> tasks)
+	{
+		CTR_Settlement settlement = new CTR_Settlement(settings, operationId, false, durationSeconds, areas, tasks);
+		settlement.m_bInProgress = true;
+		return settlement;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -132,7 +143,10 @@ class CTR_Settlement : Managed
 
 		foreach (CTR_PayEntry entry : m_aEntries)
 		{
-			entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats);
+			if (m_bInProgress)
+				entry.m_Payout = CTR_PayoutCalculator.CalculateSoFar(m_Settings, m_iTaskPay, entry.m_Stats);
+			else
+				entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats);
 		}
 	}
 
@@ -140,6 +154,12 @@ class CTR_Settlement : Managed
 	//! Credits every total above 0. GetOnDone() fires on a later frame when all answers are in, or after a timeout.
 	void Pay(MRX_EconomyService economy)
 	{
+		if (m_bInProgress)
+		{
+			Print(string.Format("[CTR] Operation %1 is still running and cannot be paid", m_sOperationId), LogLevel.ERROR);
+			return;
+		}
+
 		m_Economy = economy;
 		foreach (CTR_PayEntry entry : m_aEntries)
 		{
@@ -268,6 +288,7 @@ class CTR_Settlement : Managed
 	{
 		CTR_OperationResult result = new CTR_OperationResult();
 		result.m_sOperationId = m_sOperationId;
+		result.m_bInProgress = m_bInProgress;
 		result.m_bFinished = m_bFinished;
 		result.m_iDurationSeconds = m_iDurationSeconds;
 		result.m_sCurrency = m_Settings.m_sCurrency;

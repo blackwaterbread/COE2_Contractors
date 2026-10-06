@@ -12,6 +12,7 @@ class CTR_PayoutTests
 		runner.Add(new CTR_Test_StatMapping());
 		runner.Add(new CTR_Test_CprTime());
 		runner.Add(new CTR_Test_SettlementPaysOnce());
+		runner.Add(new CTR_Test_SettlementInProgress());
 		runner.Add(new CTR_Test_ResultJson());
 	}
 
@@ -89,7 +90,7 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckString(loaded.m_sCurrency, MRX_Settings.DEFAULT_CURRENCY, "config currency");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.CAPTIVE_TASK), 18000, "config capture officer");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.KILL_TASK), 12000, "config kill officer");
-		CheckInt(loaded.m_iReturnDelaySeconds, 30, "config return delay");
+		CheckInt(loaded.m_iReturnDelaySeconds, 300, "config loot time");
 		Finish();
 	}
 }
@@ -120,6 +121,46 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		CheckInt(negative.m_iTotal, 0, "total is not negative");
 
 		CheckString(CTR_PayoutCalculator.GetIdempotencyKey("op1", "owner1"), "op:op1:owner1", "idempotency key");
+
+		// Live view of a running operation.
+		CTR_PlayerStats active = CTR_PayoutTests.CreateStats(true, 4, 0, 1, 2);
+		CTR_Payout soFar = CTR_PayoutCalculator.CalculateSoFar(settings, 0, active);
+		CheckInt(soFar.m_iKills, 4 * 250, "so far: kill line before a task is completed");
+		CheckInt(soFar.m_iHeals, 2 * 300, "so far: heal line before a task is completed");
+		CheckInt(soFar.m_iDeaths, -2500, "so far: death line before a task is completed");
+		CheckInt(soFar.m_iTotal, 0, "so far: nothing paid before a task is completed");
+		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 6000, active).m_iTotal, CTR_PayoutCalculator.Calculate(settings, 6000, active).m_iTotal, "so far: the pay once a task is completed");
+		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 0, CTR_PayoutTests.CreateStats(false, 4)).m_iKills, 0, "so far: no lines outside the AO");
+		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The operation screen of a running operation: the same merging as the pay, the live lines, and never paid.
+class CTR_Test_SettlementInProgress : CTR_TestCase
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		array<ref CTR_AreaInfo> areas = {};
+		CTR_TaskOutcome failed = CTR_PayoutTests.CreateTask("COE_FindIntelTaskBuilder", false);
+		failed.m_bFailed = true;
+		array<ref CTR_TaskOutcome> tasks = {CTR_PayoutTests.CreateTask("COE_ClearAreaTaskBuilder", false), failed};
+
+		CTR_Settlement status = CTR_Settlement.CreateInProgress(CTR_Settings.CreateDefault(), "op-live", 90, areas, tasks);
+		map<int, ref CTR_Participant> participants = new map<int, ref CTR_Participant>();
+		participants.Insert(1, CTR_PayoutTests.CreateParticipant(1, "owner-a", CTR_PayoutTests.CreateStats(true, 2)));
+		participants.Insert(4, CTR_PayoutTests.CreateParticipant(4, "owner-a", CTR_PayoutTests.CreateStats(false, 1)));
+		status.AddParticipants(participants);
+
+		CTR_OperationResult result = status.BuildResult(4, 0);
+		Check(result.m_bInProgress, "in progress");
+		Check(!result.m_bFinished, "not finished");
+		CheckInt(result.m_Stats.m_iKills, 3, "sessions merged");
+		CheckInt(result.m_Payout.m_iKills, 3 * 250, "kill line shown");
+		CheckInt(result.m_Payout.m_iTotal, 0, "nothing paid before a task is completed");
+		CheckInt(result.m_ePayStatus, CTR_EPayStatus.NONE, "not paid");
+		CheckInt(result.m_iReturnDelaySeconds, 0, "no loot time while it runs");
 		Finish();
 	}
 }
@@ -288,6 +329,7 @@ class CTR_Test_ResultJson : CTR_TestCase
 	{
 		CTR_OperationResult result = new CTR_OperationResult();
 		result.m_sOperationId = "op-json";
+		result.m_bInProgress = true;
 		result.m_bFinished = true;
 		result.m_iDurationSeconds = 1234;
 		CTR_AreaInfo area = new CTR_AreaInfo();
@@ -300,6 +342,9 @@ class CTR_Test_ResultJson : CTR_TestCase
 		task.m_iAmount = 150;
 		task.m_fX = 4010;
 		result.m_aTasks.Insert(task);
+		CTR_TaskOutcome failed = CTR_PayoutTests.CreateTask("COE_FindIntelTaskBuilder", false);
+		failed.m_bFailed = true;
+		result.m_aTasks.Insert(failed);
 		result.m_Stats = CTR_PayoutTests.CreateStats(true, 7, 1, 2, 3);
 		result.m_Stats.m_fDistance = 1500.5;
 		result.m_Payout = CTR_PayoutCalculator.Calculate(CTR_Settings.CreateDefault(), 150, result.m_Stats);
@@ -315,14 +360,16 @@ class CTR_Test_ResultJson : CTR_TestCase
 		if (loaded)
 		{
 			CheckString(loaded.m_sOperationId, "op-json", "operation id");
+			Check(loaded.m_bInProgress, "in progress");
 			Check(loaded.m_bFinished, "finished");
 			CheckInt(loaded.m_iDurationSeconds, 1234, "duration");
 			CheckInt(loaded.m_aAreas.Count(), 1, "areas");
-			CheckInt(loaded.m_aTasks.Count(), 1, "tasks");
-			if (loaded.m_aTasks.Count() == 1)
+			CheckInt(loaded.m_aTasks.Count(), 2, "tasks");
+			if (loaded.m_aTasks.Count() == 2)
 			{
 				CheckInt(loaded.m_aTasks[0].m_iAmount, 150, "task amount");
 				Check(loaded.m_aTasks[0].m_bCompleted, "task completed");
+				Check(loaded.m_aTasks[1].m_bFailed && !loaded.m_aTasks[1].m_bCompleted, "task failed");
 			}
 
 			CheckInt(loaded.m_Stats.m_iKills, 7, "kills");

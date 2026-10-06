@@ -1,8 +1,10 @@
-//! Operation result screen (client): earnings, personal stats, the operation's tasks with their grid position and
-//! outcome, and team totals. A countdown shows when everyone returns to base; the screen stays until it is closed.
+//! Operation screen (client): earnings, personal stats, the operation's tasks with their grid position and outcome,
+//! and team totals. While the operation runs it shows what the player would get if it ended now. After it, a countdown
+//! shows when everyone left in the AO returns to base, with a button to return now; the screen stays until it is closed.
 class CTR_ResultDialog : MRX_ScriptedDialog
 {
 	protected static const string DIALOG_TAG = "CTR_Result";
+	protected static const string ACTION_RETURN = "return";
 	protected static const float WINDOW_WIDTH = 900;
 	//! Room for the title, header and footer; the list takes the rest of the screen height.
 	protected static const float RESERVED_HEIGHT = 370;
@@ -11,6 +13,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static const int SECTION_FONT_SIZE = 24;
 	//! The return countdown must be noticed: everyone is moved when it runs out.
 	protected static const int COUNTDOWN_FONT_SIZE = 34;
+	protected static const int RETURN_BUTTON_FONT_SIZE = 24;
 	protected static const int COLOR_GAIN = 0xFF80D080;
 	protected static const int COLOR_LOSS = 0xFFE06060;
 	protected static const int COLOR_MUTED = 0xFFA0A0A0;
@@ -18,8 +21,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 
 	protected ref CTR_OperationResult m_Result;
 	protected TextWidget m_wCountdown;
+	protected SCR_ButtonTextComponent m_ReturnButton;
+	protected TextWidget m_wReturnStatus;
 	protected VerticalLayoutWidget m_wList;
-	protected int m_iReturnTick;
 
 	//! The open result screen, if any (weak).
 	protected static CTR_ResultDialog s_Instance;
@@ -33,7 +37,6 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 
 		CTR_ResultDialog dialog = new CTR_ResultDialog();
 		dialog.m_Result = result;
-		dialog.m_iReturnTick = System.GetTickCount() + result.m_iReturnDelaySeconds * 1000;
 		OpenDialog(dialog, GetTitle(result), DIALOG_TAG, DIALOG_LAYOUT_MEDIUM);
 		s_Instance = dialog;
 		return dialog;
@@ -48,6 +51,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	//------------------------------------------------------------------------------------------------
 	protected static string GetTitle(CTR_OperationResult result)
 	{
+		if (result.m_bInProgress)
+			return "Operation in progress";
+
 		if (!result.m_bFinished)
 		{
 			if (result.IsSuccess())
@@ -69,14 +75,15 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 
 		TextWidget areas = AddHeaderLine(GetAreaNames());
 		SetColor(areas, COLOR_MUTED);
-		m_wCountdown = AddHeaderLine(string.Empty);
-		if (m_wCountdown)
+		if (m_Result.m_bInProgress)
 		{
-			m_wCountdown.SetExactFontSize(COUNTDOWN_FONT_SIZE);
-			SetColor(m_wCountdown, COLOR_SECTION);
-			AlignableSlot.SetPadding(m_wCountdown, 0, 6, 0, 6);
+			TextWidget note = AddHeaderLine("Paid when the operation ends. Amounts as if it ended now.");
+			SetColor(note, COLOR_MUTED);
 		}
-		UpdateCountdown();
+		else
+		{
+			AddReturnHeader();
+		}
 
 		m_wList = CreateScrollList(m_wRows, Math.Clamp(GetScreenHeight() - RESERVED_HEIGHT, MIN_LIST_HEIGHT, MAX_LIST_HEIGHT));
 		if (!m_wList)
@@ -86,9 +93,68 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddPersonalStats();
 		AddTasks();
 		AddTeamTotals();
+	}
 
-		if (m_Result.m_iReturnDelaySeconds > 0)
+	//------------------------------------------------------------------------------------------------
+	//! Countdown of the loot time and the button to return now.
+	protected void AddReturnHeader()
+	{
+		m_wCountdown = AddHeaderLine(string.Empty);
+		if (!m_wCountdown)
+			return;
+
+		m_wCountdown.SetExactFontSize(COUNTDOWN_FONT_SIZE);
+		SetColor(m_wCountdown, COLOR_SECTION);
+		AlignableSlot.SetPadding(m_wCountdown, 0, 6, 0, 6);
+
+		if (GetReturnSecondsLeft() > 0)
+		{
+			Widget row = CreateLayout(WidgetType.HorizontalLayoutWidgetTypeID, m_wHeader);
+			m_ReturnButton = AddButton(row, "Return to base now", ACTION_RETURN);
+			if (m_ReturnButton)
+			{
+				TextWidget buttonText = TextWidget.Cast(m_ReturnButton.GetRootWidget().FindAnyWidget("Text"));
+				if (buttonText)
+					buttonText.SetExactFontSize(RETURN_BUTTON_FONT_SIZE);
+			}
+
+			m_wReturnStatus = CreateText(row, string.Empty);
+			SetColor(m_wReturnStatus, COLOR_LOSS);
+			AlignableSlot.SetPadding(m_wReturnStatus, 16, 0, 0, 0);
+			AlignableSlot.SetVerticalAlign(m_wReturnStatus, LayoutVerticalAlign.Center);
 			GetGame().GetCallqueue().CallLater(UpdateCountdown, 250, true);
+		}
+
+		UpdateCountdown();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static int GetReturnSecondsLeft()
+	{
+		COE_PlayerController controller = COE_PlayerController.GetInstance();
+		if (!controller)
+			return 0;
+
+		return controller.CTR_GetReturnSecondsLeft();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnRowAction(string action)
+	{
+		if (action != ACTION_RETURN)
+			return;
+
+		COE_PlayerController controller = COE_PlayerController.GetInstance();
+		if (controller)
+			controller.CTR_RequestReturnNow();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Why the return to base was refused.
+	void ShowReturnStatus(string text)
+	{
+		if (m_wReturnStatus)
+			m_wReturnStatus.SetText(text);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -113,14 +179,20 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			return;
 		}
 
-		int remaining = Math.Ceil((m_iReturnTick - System.GetTickCount()) / 1000.0);
+		int remaining = GetReturnSecondsLeft();
 		if (remaining > 0)
 		{
-			m_wCountdown.SetText(string.Format("Returning to base in %1 s", remaining));
+			m_wCountdown.SetText(string.Format("Everyone in the AO returns to base in %1", FormatDuration(remaining)));
 			return;
 		}
 
 		m_wCountdown.SetText("Returned to base");
+		if (m_ReturnButton)
+			m_ReturnButton.GetRootWidget().SetVisible(false);
+
+		if (m_wReturnStatus)
+			m_wReturnStatus.SetText(string.Empty);
+
 		GetGame().GetCallqueue().Remove(UpdateCountdown);
 	}
 
@@ -142,37 +214,54 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	//------------------------------------------------------------------------------------------------
 	protected void AddEarnings()
 	{
-		AddSection("Earnings");
 		CTR_Payout payout = m_Result.m_Payout;
 		CTR_PlayerStats stats = m_Result.m_Stats;
+		if (m_Result.m_bInProgress)
+		{
+			AddSection("Earnings so far");
+			if (!stats.m_bEnteredAO)
+				AddLine("You have not entered the AO yet. Only contractors who enter it are paid.", string.Empty, COLOR_MUTED);
+			else if (payout.m_iTasks <= 0)
+				AddLine("No task completed yet. Nothing is paid until one is.", string.Empty, COLOR_MUTED);
 
+			if (stats.m_bEnteredAO)
+				AddPayLines();
+
+			AddLine("If it ended now", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
+			return;
+		}
+
+		AddSection("Earnings");
 		if (!m_Result.m_bFinished)
 			AddLine("Ended before all tasks were finished: completed tasks still pay.", string.Empty, COLOR_MUTED);
 
 		if (!stats.m_bEnteredAO)
-		{
 			AddLine("You did not enter the AO.", string.Empty, COLOR_MUTED);
-		}
 		else if (payout.m_iTasks <= 0)
-		{
 			AddLine("No task was completed.", string.Empty, COLOR_MUTED);
-		}
 		else
-		{
-			foreach (CTR_TaskOutcome task : m_Result.m_aTasks)
-			{
-				if (task.m_bCompleted)
-					AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount, m_Result.m_sCurrency), COLOR_GAIN);
-			}
-
-			AddCountLine("Kills", stats.m_iKills, payout.m_iKills);
-			AddCountLine("Bandages and CPR", stats.m_iHeals, payout.m_iHeals);
-			AddCountLine("Friendly or civilian kills", stats.m_iTeamKills, payout.m_iTeamKills);
-			AddCountLine("Deaths", stats.m_iDeaths, payout.m_iDeaths);
-		}
+			AddPayLines();
 
 		AddLine("Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
 		AddLine(GetPayStatusText(), GetBalanceText(), COLOR_MUTED);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Completed tasks and the personal lines.
+	protected void AddPayLines()
+	{
+		CTR_Payout payout = m_Result.m_Payout;
+		CTR_PlayerStats stats = m_Result.m_Stats;
+		foreach (CTR_TaskOutcome task : m_Result.m_aTasks)
+		{
+			if (task.m_bCompleted)
+				AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount, m_Result.m_sCurrency), COLOR_GAIN);
+		}
+
+		AddCountLine("Kills", stats.m_iKills, payout.m_iKills);
+		AddCountLine("Bandages and CPR", stats.m_iHeals, payout.m_iHeals);
+		AddCountLine("Friendly or civilian kills", stats.m_iTeamKills, payout.m_iTeamKills);
+		AddCountLine("Deaths", stats.m_iDeaths, payout.m_iDeaths);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -214,6 +303,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddSection("Your operation");
 		CTR_PlayerStats stats = m_Result.m_Stats;
 		AddLine("Kills", stats.m_iKills.ToString());
+		AddLine("Bandages and CPR", stats.m_iHeals.ToString());
 		AddLine("Deaths", stats.m_iDeaths.ToString());
 		AddLine("Shots fired", stats.m_iShots.ToString());
 		AddLine("Distance", FormatDistance(stats.m_fDistance));
@@ -233,7 +323,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 				outcome = "Completed";
 				color = COLOR_GAIN;
 			}
-			else if (!m_Result.m_bFinished)
+			else if (m_Result.m_bInProgress && !task.m_bFailed)
+			{
+				outcome = "In progress";
+				color = COLOR_MUTED;
+			}
+			else if (!m_Result.m_bFinished && !task.m_bFailed)
 			{
 				outcome = "Not finished";
 				color = COLOR_MUTED;
@@ -249,7 +344,10 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddSection("Team");
 		AddLine("Tasks completed", string.Format("%1 / %2", m_Result.CountCompletedTasks(), m_Result.m_aTasks.Count()));
 		AddLine("Contractors in the AO", m_Result.m_iParticipants.ToString());
-		AddLine("Total earned", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
+		if (m_Result.m_bInProgress)
+			AddLine("Team total if it ended now", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
+		else
+			AddLine("Total earned", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		AddLine("Operation time", FormatDuration(m_Result.m_iDurationSeconds));
 	}
 

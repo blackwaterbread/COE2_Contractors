@@ -2,7 +2,7 @@
 //! Diag builds only: "#ctr <action>" in the chat (admin) to try an operation without playing it through.
 //!   #ctr ao [n]    generate an AO with n random tasks (default 2) away from the base
 //!   #ctr go        move to the edge of the running AO (counts as entering it)
-//!   #ctr win       complete every task: pay, result screen, return to base
+//!   #ctr win       complete every task: pay, result screen, loot time, return to base
 //!   #ctr fail      fail every task: the operation finishes without pay
 //!   #ctr cancel    cancel the AO like the commander does
 //!   #ctr base      move next to the base arsenal shops

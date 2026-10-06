@@ -66,7 +66,7 @@ class CTR_Settings
 	[Attribute("120", desc: "Most seconds of CPR on one patient that pay in an operation (ACE revives in about a minute when the patient has enough blood)", params: "0 600")]
 	int m_iCprMaxSecondsPerPatient;
 
-	[Attribute("30", desc: "Seconds between the result screen and the return to base", params: "0 120")]
+	[Attribute("300", desc: "Loot time: seconds between the result screen and the return to base of everyone still in the AO. Players can return earlier on their own; the AO ends as soon as no living player is left in it.", params: "0 1800")]
 	int m_iReturnDelaySeconds;
 
 	[Attribute(desc: "Gear every player respawns with, whatever the role: clothing, weapons, then the rest. It is issued: shops and loadouts give it no value. Empty = the built-in kit (CTR_StarterKit).", params: "et")]
@@ -109,7 +109,7 @@ class CTR_Settings
 		settings.m_iFriendlyHealReward = 300;
 		settings.m_iCprRewardSeconds = 15;
 		settings.m_iCprMaxSecondsPerPatient = 120;
-		settings.m_iReturnDelaySeconds = 30;
+		settings.m_iReturnDelaySeconds = 300;
 		settings.m_fSafeZoneRadius = 75;
 		settings.m_aTaskRewards = {
 			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),

@@ -1,12 +1,32 @@
+//! Answer to a player who asks to return to base during the loot time.
+enum CTR_EReturnStatus
+{
+	OK,
+	//! No loot time: the operation still runs, or the AO already ended.
+	NOT_NOW,
+	DEAD,
+	//! Only the driver takes a vehicle back.
+	NOT_DRIVER,
+	AT_BASE,
+	FAILED
+}
+
+//------------------------------------------------------------------------------------------------
 //! Moves vehicles with players inside to the main base, crew included (server).
 //! Players on foot are moved by COE2's own fast travel when the AO ends.
 class CTR_ReturnTrip
 {
-	//! Vehicles closer than this to the base stay where they are.
+	//! Vehicles and players closer than this to the base stay where they are.
 	protected static const float AT_BASE_DISTANCE = 150;
 	protected static const float PARKING_SEARCH_RADIUS = 80;
 	protected static const float PARKING_CLEARANCE = 7;
 	protected static const float PARKING_HEIGHT = 4;
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsAtBase(vector pos, vector basePos)
+	{
+		return vector.DistanceXZ(pos, basePos) < AT_BASE_DISTANCE;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Moves the vehicles that are not at the base yet. \return Number of vehicles moved.
@@ -15,7 +35,7 @@ class CTR_ReturnTrip
 		int moved;
 		foreach (IEntity vehicle : vehicles)
 		{
-			if (!vehicle || vector.DistanceXZ(vehicle.GetOrigin(), basePos) < AT_BASE_DISTANCE)
+			if (!vehicle || IsAtBase(vehicle.GetOrigin(), basePos))
 				continue;
 
 			if (MoveVehicle(vehicle, basePos))
@@ -35,21 +55,54 @@ class CTR_ReturnTrip
 
 		foreach (int playerId : playerIds)
 		{
-			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
-			if (!character || !character.IsInVehicle())
-				continue;
-
-			if (character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
-				continue;
-
-			SCR_CompartmentAccessComponent access = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
-			if (!access)
-				continue;
-
-			IEntity vehicle = access.GetVehicle();
+			IEntity vehicle = GetVehicle(SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId)));
 			if (vehicle && !outVehicles.Contains(vehicle))
 				outVehicles.Insert(vehicle);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Living players sitting in the vehicle.
+	static void CollectPlayersIn(notnull IEntity vehicle, notnull array<SCR_ChimeraCharacter> outCharacters)
+	{
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		array<int> playerIds = {};
+		playerManager.GetPlayers(playerIds);
+
+		foreach (int playerId : playerIds)
+		{
+			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
+			if (GetVehicle(character) == vehicle)
+				outCharacters.Insert(character);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return The vehicle a living character sits in, or null.
+	static IEntity GetVehicle(SCR_ChimeraCharacter character)
+	{
+		if (!character || !character.IsInVehicle())
+			return null;
+
+		if (character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
+			return null;
+
+		SCR_CompartmentAccessComponent access = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
+		if (!access)
+			return null;
+
+		return access.GetVehicle();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsDriver(notnull SCR_ChimeraCharacter character)
+	{
+		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
+		if (!access)
+			return false;
+
+		BaseCompartmentSlot slot = access.GetCompartment();
+		return slot && slot.GetType() == ECompartmentType.PILOT;
 	}
 
 	//------------------------------------------------------------------------------------------------

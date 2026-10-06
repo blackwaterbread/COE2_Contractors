@@ -1,5 +1,5 @@
-//! Return countdown on the HUD of the local player: shown while the result screen is closed, until everyone is moved
-//! back to base. Same look as the balance panel of the Marx arsenal.
+//! Countdown of the loot time on the HUD of the local player: shown while the result screen is closed, until everyone
+//! left in the AO is moved back to base. Same look as the balance panel of the Marx arsenal.
 class CTR_ReturnCountdownHud : Managed
 {
 	protected static const int UPDATE_MS = 250;
@@ -7,17 +7,19 @@ class CTR_ReturnCountdownHud : Managed
 	protected static const ResourceName BOLD_FONT = "{EABA4FE9D014CCEF}UI/Fonts/RobotoCondensed/RobotoCondensed_Bold.fnt";
 	protected static const int TITLE_FONT_SIZE = 15;
 	protected static const int TIME_FONT_SIZE = 30;
+	protected static const int HINT_FONT_SIZE = 14;
 	protected static const float ACCENT_WIDTH = 4;
 
 	protected Widget m_wRoot;
 	protected TextWidget m_wTime;
-	protected int m_iReturnTick;
+	//! Weak: the controller owns this countdown.
+	protected COE_PlayerController m_Controller;
 
 	//------------------------------------------------------------------------------------------------
-	//! \return Null without a delay or before the vanilla HUD exists.
-	static CTR_ReturnCountdownHud Create(int delaySeconds)
+	//! \return Null without loot time left or before the vanilla HUD exists.
+	static CTR_ReturnCountdownHud Create(notnull COE_PlayerController controller)
 	{
-		if (delaySeconds <= 0)
+		if (controller.CTR_GetReturnSecondsLeft() <= 0)
 			return null;
 
 		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.GetHUDManager();
@@ -25,8 +27,8 @@ class CTR_ReturnCountdownHud : Managed
 			return null;
 
 		CTR_ReturnCountdownHud hud = new CTR_ReturnCountdownHud();
+		hud.m_Controller = controller;
 		hud.Build(hudManager.GetHUDRootWidget());
-		hud.m_iReturnTick = System.GetTickCount() + delaySeconds * 1000;
 		hud.Update();
 		GetGame().GetCallqueue().CallLater(hud.Update, UPDATE_MS, true);
 		return hud;
@@ -55,7 +57,10 @@ class CTR_ReturnCountdownHud : Managed
 		if (!m_wRoot)
 			return;
 
-		int remaining = Math.Ceil((m_iReturnTick - System.GetTickCount()) / 1000.0);
+		int remaining;
+		if (m_Controller)
+			remaining = m_Controller.CTR_GetReturnSecondsLeft();
+
 		if (remaining <= 0)
 		{
 			m_wRoot.SetVisible(false);
@@ -63,7 +68,7 @@ class CTR_ReturnCountdownHud : Managed
 			return;
 		}
 
-		m_wTime.SetText(string.Format("%1 s", remaining));
+		m_wTime.SetText(CTR_ResultDialog.FormatDuration(remaining));
 		// The result screen shows its own countdown.
 		m_wRoot.SetVisible(!CTR_ResultDialog.GetOpen());
 	}
@@ -95,6 +100,9 @@ class CTR_ReturnCountdownHud : Managed
 		AlignableSlot.SetHorizontalAlign(title, LayoutHorizontalAlign.Center);
 		m_wTime = CreateText(column, TIME_FONT_SIZE, Color.FromInt(Color.WHITE));
 		AlignableSlot.SetHorizontalAlign(m_wTime, LayoutHorizontalAlign.Center);
+		TextWidget hint = CreateText(column, HINT_FONT_SIZE, Color.FromSRGBA(160, 160, 160, 255));
+		hint.SetText(CTR_PauseMenu.RETURN_HINT);
+		AlignableSlot.SetHorizontalAlign(hint, LayoutHorizontalAlign.Center);
 	}
 
 	//------------------------------------------------------------------------------------------------

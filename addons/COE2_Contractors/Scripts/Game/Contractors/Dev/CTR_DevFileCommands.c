@@ -12,6 +12,7 @@
 //!   hands      log what the host holds
 //!   view       switch between first and third person
 //!   kill       kill the host's character (to respawn)
+//!   pause      open the pause menu
 class CTR_DevFileCommands
 {
 	static const string FILE = "$profile:ctr_cmd.txt";
@@ -65,6 +66,7 @@ class CTR_DevFileCommands
 			case "hands": LogHands(character); return;
 			case "view": ToggleView(character); return;
 			case "kill": Kill(character); return;
+			case "pause": ArmaReforgerScripted.OpenPauseMenu(); return;
 		}
 
 		array<string> argv = {CTR_DevCommand.KEYWORD};
