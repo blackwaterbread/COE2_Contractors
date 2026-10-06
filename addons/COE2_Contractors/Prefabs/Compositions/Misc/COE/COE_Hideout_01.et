@@ -13,11 +13,30 @@ COE_MainBaseEntity {
     }
     MRX_ShopComponent "{6A8CDA998BAA5420}" {
      m_sShopId "contractors_weapons"
-     m_sDisplayName "Contractor Armory"
+     m_sDisplayName "Weapon Shop"
      m_sCatalog "{E78639FD8B162FF9}Configs/Contractors/Shop/CTR_ShopWeapons.conf"
     }
     SCR_ArsenalComponent "{56F2C6D1431AD9AF}" {
      m_eArsenalSaveType SAVING_DISABLED
+    }
+    MeshObject "{56F2C6D1431AD85A}" {
+     Materials {
+      MaterialAssignClass "{6108C5B124553EEA}" {
+       SourceMaterial "ArsenalBox_01_Decal"
+       AssignedMaterial "{846039F3F6E61316}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_Decal_FIA_weapons.emat"
+      }
+      MaterialAssignClass "{6108C5B124553E0E}" {
+       SourceMaterial "ArsenalBox_01_MLOD"
+       AssignedMaterial "{54890FD8AFC9D213}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_FIA_MLOD.emat"
+      }
+     }
+    }
+    UniversalInventoryStorageComponent "{56F2C6D15FE6C4CE}" {
+     Attributes SCR_ItemAttributeCollection "{56F2C6D6A36680FB}" {
+      ItemDisplayName SCR_InventoryUIInfo "{56F2C6D6A229E091}" {
+       Name "Weapon Shop"
+      }
+     }
     }
    }
   }
@@ -28,11 +47,30 @@ COE_MainBaseEntity {
     }
     MRX_ShopComponent "{6A8CDA998BAA5E50}" {
      m_sShopId "contractors_equipment"
-     m_sDisplayName "Contractor Outfitter"
+     m_sDisplayName "Equipment Shop"
      m_sCatalog "{752628B13CDA64F6}Configs/Contractors/Shop/CTR_ShopEquipment.conf"
     }
     SCR_ArsenalComponent "{56F2C6D1431AD9AF}" {
      m_eArsenalSaveType SAVING_DISABLED
+    }
+    MeshObject "{56F2C6D1431AD85A}" {
+     Materials {
+      MaterialAssignClass "{6108C5B124553EEA}" {
+       SourceMaterial "ArsenalBox_01_Decal"
+       AssignedMaterial "{3A02B3149F575BBC}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_Decal_FIA_equip.emat"
+      }
+      MaterialAssignClass "{6108C5B124553E0E}" {
+       SourceMaterial "ArsenalBox_01_MLOD"
+       AssignedMaterial "{54890FD8AFC9D213}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_FIA_MLOD.emat"
+      }
+     }
+    }
+    UniversalInventoryStorageComponent "{56F2C6D15FE6C4CE}" {
+     Attributes SCR_ItemAttributeCollection "{56F2C6D6A36680FB}" {
+      ItemDisplayName SCR_InventoryUIInfo "{56F2C6D6A229E091}" {
+       Name "Equipment Shop"
+      }
+     }
     }
    }
   }

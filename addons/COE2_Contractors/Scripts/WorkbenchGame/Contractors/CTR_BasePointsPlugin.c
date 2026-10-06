@@ -1,5 +1,6 @@
 // Development tool: turns the two FIA arsenal boxes of the COE2 main base prefab used by the COE2 worlds
-// (COE_Hideout_01.et) into the Contractors arsenal shops and puts the stash point next to them. The override file
+// (COE_Hideout_01.et) into the Contractors arsenal shops, named and marked like the vanilla weapons and equipment
+// arsenal boxes, and puts the stash point next to them. The override file
 // itself is created in Workbench ("Override in" COE2_Contractors); this adds the lines by a text edit, with entity and
 // component IDs from Workbench.GenerateGloballyUniqueID64(). Only adds what is missing: arsenal shops by shop ID, the
 // stash point by prefab. Run "Create Contractors Configs" first, it creates the shop catalogs.
@@ -13,8 +14,19 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 	//! Entity IDs of the FIA arsenal boxes in COE_Hideout_01.et (inherited children of the override).
 	static const string WEAPONS_BOX_ID = "60A042236B427BA4";
 	static const string EQUIPMENT_BOX_ID = "61288E8539ECF97D";
-	//! SCR_ArsenalComponent entry of the vanilla arsenal boxes.
+	//! Entries of the vanilla arsenal boxes the shops change: arsenal, mesh with its decal and MLOD materials
+	//! (ArsenalBox_FIA.et), and the storage's display name, which the box and the arsenal window show.
 	static const string ARSENAL_COMPONENT_ID = "{56F2C6D1431AD9AF}";
+	static const string MESH_COMPONENT_ID = "{56F2C6D1431AD85A}";
+	static const string DECAL_MATERIAL_ID = "{6108C5B124553EEA}";
+	static const string MLOD_MATERIAL_ID = "{6108C5B124553E0E}";
+	static const ResourceName MLOD_MATERIAL = "{54890FD8AFC9D213}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_FIA_MLOD.emat";
+	static const string STORAGE_COMPONENT_ID = "{56F2C6D15FE6C4CE}";
+	static const string STORAGE_ATTRIBUTES_ID = "{56F2C6D6A36680FB}";
+	static const string STORAGE_UI_INFO_ID = "{56F2C6D6A229E091}";
+	//! Decals of the vanilla FIA weapons and equipment arsenal boxes.
+	static const ResourceName WEAPONS_DECAL = "{846039F3F6E61316}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_Decal_FIA_weapons.emat";
+	static const ResourceName EQUIPMENT_DECAL = "{3A02B3149F575BBC}Assets/Props/Military/AmmoBox/ArsenalBox_01/Data/ArsenalBox_01_Decal_FIA_equip.emat";
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -64,8 +76,8 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		}
 
 		array<string> children = {};
-		if (!AddArsenalShop(children, text, WEAPONS_BOX_ID, CTR_ShopPricing.SHOP_WEAPONS, "Contractor Armory")
-			|| !AddArsenalShop(children, text, EQUIPMENT_BOX_ID, CTR_ShopPricing.SHOP_EQUIPMENT, "Contractor Outfitter"))
+		if (!AddArsenalShop(children, text, WEAPONS_BOX_ID, CTR_ShopPricing.SHOP_WEAPONS, "Weapon Shop", WEAPONS_DECAL)
+			|| !AddArsenalShop(children, text, EQUIPMENT_BOX_ID, CTR_ShopPricing.SHOP_EQUIPMENT, "Equipment Shop", EQUIPMENT_DECAL))
 			return;
 
 		if (!text.Contains(STASH_PREFAB))
@@ -113,10 +125,10 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Adds the lines that make an inherited arsenal box a Marx arsenal shop (saved loadouts off) unless the override
-	//! already has a shop with this ID.
+	//! Adds the lines that make an inherited arsenal box a Marx arsenal shop (saved loadouts off, own name and decal)
+	//! unless the override already has a shop with this ID.
 	//! \return False when the shop's catalog does not exist.
-	protected bool AddArsenalShop(notnull array<string> children, string text, string boxId, string shopId, string displayName)
+	protected bool AddArsenalShop(notnull array<string> children, string text, string boxId, string shopId, string displayName, ResourceName decal)
 	{
 		if (text.Contains("m_sShopId \"" + shopId + "\""))
 			return true;
@@ -143,6 +155,25 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		children.Insert("    }");
 		children.Insert("    SCR_ArsenalComponent \"" + ARSENAL_COMPONENT_ID + "\" {");
 		children.Insert("     m_eArsenalSaveType SAVING_DISABLED");
+		children.Insert("    }");
+		children.Insert("    MeshObject \"" + MESH_COMPONENT_ID + "\" {");
+		children.Insert("     Materials {");
+		children.Insert("      MaterialAssignClass \"" + DECAL_MATERIAL_ID + "\" {");
+		children.Insert("       SourceMaterial \"ArsenalBox_01_Decal\"");
+		children.Insert("       AssignedMaterial \"" + decal + "\"");
+		children.Insert("      }");
+		children.Insert("      MaterialAssignClass \"" + MLOD_MATERIAL_ID + "\" {");
+		children.Insert("       SourceMaterial \"ArsenalBox_01_MLOD\"");
+		children.Insert("       AssignedMaterial \"" + MLOD_MATERIAL + "\"");
+		children.Insert("      }");
+		children.Insert("     }");
+		children.Insert("    }");
+		children.Insert("    UniversalInventoryStorageComponent \"" + STORAGE_COMPONENT_ID + "\" {");
+		children.Insert("     Attributes SCR_ItemAttributeCollection \"" + STORAGE_ATTRIBUTES_ID + "\" {");
+		children.Insert("      ItemDisplayName SCR_InventoryUIInfo \"" + STORAGE_UI_INFO_ID + "\" {");
+		children.Insert("       Name \"" + displayName + "\"");
+		children.Insert("      }");
+		children.Insert("     }");
 		children.Insert("    }");
 		children.Insert("   }");
 		children.Insert("  }");
