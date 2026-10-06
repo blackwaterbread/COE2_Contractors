@@ -162,7 +162,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			}
 
 			AddCountLine("Kills", stats.m_iKills, payout.m_iKills);
-			AddCountLine("Friendlies treated", stats.m_iHeals, payout.m_iHeals);
+			AddCountLine("Bandages and CPR", stats.m_iHeals, payout.m_iHeals);
 			AddCountLine("Friendly or civilian kills", stats.m_iTeamKills, payout.m_iTeamKills);
 			AddCountLine("Deaths", stats.m_iDeaths, payout.m_iDeaths);
 		}

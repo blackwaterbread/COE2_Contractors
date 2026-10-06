@@ -10,7 +10,7 @@ class CTR_PayoutTests
 		runner.Add(new CTR_Test_TaskPricing());
 		runner.Add(new CTR_Test_PayoutRules());
 		runner.Add(new CTR_Test_StatMapping());
-		runner.Add(new CTR_Test_UnlistedTreatment());
+		runner.Add(new CTR_Test_CprTime());
 		runner.Add(new CTR_Test_SettlementPaysOnce());
 		runner.Add(new CTR_Test_ResultJson());
 	}
@@ -150,35 +150,28 @@ class CTR_Test_StatMapping : CTR_TestCase
 		CheckInt(stats.m_iTeamKills, 2, "team kills");
 		CheckInt(stats.m_iDeaths, 1, "deaths");
 		CheckInt(stats.m_iShots, 30, "shots");
-		CheckInt(stats.m_iHeals, 2, "heals of others only");
+		CheckInt(stats.m_iHeals, 1, "bandages on others only (no drugs, not on oneself)");
 		CheckInt(Math.Round(stats.m_fDistance), 200, "distance");
 		Finish();
 	}
 }
 
 //------------------------------------------------------------------------------------------------
-//! Treatments with medical items the data collector does not list (ACE drugs) count as heals while the operation runs.
-class CTR_Test_UnlistedTreatment : CTR_TestCase
+//! Every full interval of CPR counts as one treatment, also when the time comes in pieces.
+class CTR_Test_CprTime : CTR_TestCase
 {
-	protected static const int PLAYER_ID = 77;
-
 	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
-		CTR_Operation operation = new CTR_Operation("test-treatment");
-		operation.StartTracking();
-		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
-		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
-		CTR_Participant participant = operation.GetParticipants().Get(PLAYER_ID);
-		Check(participant != null, "treating player becomes a participant");
-		if (participant)
-			CheckInt(participant.m_Stats.m_iHeals, 2, "two treatments");
-
-		operation.Close();
-		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
-		if (participant)
-			CheckInt(participant.m_Stats.m_iHeals, 2, "no counting after the operation closed");
-
+		CTR_Participant participant = new CTR_Participant();
+		CTR_Operation.AddCprSeconds(participant, 14, 15);
+		CheckInt(participant.m_Stats.m_iHeals, 0, "less than one interval");
+		CTR_Operation.AddCprSeconds(participant, 2, 15);
+		CheckInt(participant.m_Stats.m_iHeals, 1, "first interval complete");
+		CTR_Operation.AddCprSeconds(participant, 30, 15);
+		CheckInt(participant.m_Stats.m_iHeals, 3, "two more intervals");
+		CTR_Operation.AddCprSeconds(participant, 2, 0);
+		CheckInt(participant.m_Stats.m_iHeals, 3, "no interval configured");
 		Finish();
 	}
 }

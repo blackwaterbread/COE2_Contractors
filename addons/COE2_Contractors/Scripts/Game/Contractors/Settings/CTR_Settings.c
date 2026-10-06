@@ -57,8 +57,11 @@ class CTR_Settings
 	[Attribute("2500", desc: "Deducted per death", params: "0 inf")]
 	int m_iDeathPenalty;
 
-	[Attribute("300", desc: "Per bandage, tourniquet, saline or morphine applied to someone else", params: "0 inf")]
+	[Attribute("300", desc: "Per bandage applied to someone else and per CPR interval on a player whose heart stopped. Drugs pay nothing.", params: "0 inf")]
 	int m_iFriendlyHealReward;
+
+	[Attribute("15", desc: "Seconds of CPR (ACE Medical Circulation) that count as one treatment", params: "1 120")]
+	int m_iCprRewardSeconds;
 
 	[Attribute("10", desc: "Seconds between the result screen and the return to base", params: "0 120")]
 	int m_iReturnDelaySeconds;
@@ -95,6 +98,7 @@ class CTR_Settings
 		settings.m_iTeamKillPenalty = 10000;
 		settings.m_iDeathPenalty = 2500;
 		settings.m_iFriendlyHealReward = 300;
+		settings.m_iCprRewardSeconds = 15;
 		settings.m_iReturnDelaySeconds = 10;
 		settings.m_aTaskRewards = {
 			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),

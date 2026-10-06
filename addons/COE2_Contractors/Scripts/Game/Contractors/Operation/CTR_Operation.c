@@ -6,12 +6,14 @@ class CTR_Participant : Managed
 	ref CTR_PlayerStats m_Stats = new CTR_PlayerStats();
 	int m_iFirstSeen;
 	int m_iLastSeen;
+	//! Time spent on CPR of players in cardiac arrest; every full reward interval counts as a treatment.
+	float m_fCprSeconds;
 }
 
 //------------------------------------------------------------------------------------------------
 //! An operation from AO generation until its tasks are finished or it is cancelled (server).
-//! Tracks who enters an AO and counts the vanilla data collector stats that players gain meanwhile, plus treatments
-//! of others with medical items the data collector does not list (ACE drugs).
+//! Tracks who enters an AO and counts the vanilla data collector stats that players gain meanwhile, plus time spent on
+//! CPR (ACE Medical Circulation).
 class CTR_Operation : Managed
 {
 	protected static const int TRACK_INTERVAL_MS = 2000;
@@ -64,7 +66,6 @@ class CTR_Operation : Managed
 		SCR_DataCollectorComponent collector = GetGame().GetDataCollector();
 		m_bCountTemporaryStats = collector && collector.FindModule(SCR_DataCollectorCrimesModule) != null;
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatAdded);
-		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Insert(OnUnlistedTreatment);
 		GetGame().GetCallqueue().CallLater(Track, TRACK_INTERVAL_MS, true);
 		Track();
 	}
@@ -86,7 +87,6 @@ class CTR_Operation : Managed
 	protected void StopTracking()
 	{
 		SCR_PlayerData.s_OnStatAdded.Remove(OnStatAdded);
-		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Remove(OnUnlistedTreatment);
 		GetGame().GetCallqueue().Remove(Track);
 	}
 
@@ -113,9 +113,10 @@ class CTR_Operation : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Updates owner, name and time of connected players and marks those inside an AO.
+	//! Updates owner, name and time of connected players, marks those inside an AO and adds CPR time.
 	protected void Track()
 	{
+		int cprInterval = CTR_Settings.Get().m_iCprRewardSeconds;
 		COE_GameMode gameMode = COE_GameMode.GetInstance();
 		if (!gameMode)
 			return;
@@ -138,16 +139,57 @@ class CTR_Operation : Managed
 			if (!ownerId.IsEmpty())
 				participant.m_sOwnerId = ownerId;
 
-			if (participant.m_Stats.m_bEnteredAO)
-				continue;
-
 			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
 			if (!character || character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
 				continue;
 
-			if (IsInAnyAO(character.GetOrigin(), aos, radius))
+			if (IsDoingCprOnPlayer(character))
+				AddCprSeconds(participant, TRACK_INTERVAL_MS * 0.001, cprInterval);
+
+			if (!participant.m_Stats.m_bEnteredAO && IsInAnyAO(character.GetOrigin(), aos, radius))
 				participant.m_Stats.m_bEnteredAO = true;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! eturn True while the character does CPR (ACE Medical Circulation) on another player whose heart stopped.
+	//! CPR on someone who does not need it, or on AI, pays nothing.
+	static bool IsDoingCprOnPlayer(notnull SCR_ChimeraCharacter character)
+	{
+		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
+		if (!access)
+			return false;
+
+		BaseCompartmentSlot slot = access.GetCompartment();
+		if (!slot)
+			return false;
+
+		ACE_Medical_CPRHelperCompartment helper = ACE_Medical_CPRHelperCompartment.Cast(slot.GetOwner());
+		if (!helper)
+			return false;
+
+		ACE_Medical_VitalsComponent vitals = helper.CTR_GetPatientVitals();
+		if (!vitals)
+			return false;
+
+		IEntity patient = vitals.GetOwner();
+		if (!patient || patient == character || GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(patient) <= 0)
+			return false;
+
+		return (vitals.GetVitalStateID() & (ACE_Medical_EVitalStateID.CARDIAC_ARREST | ACE_Medical_EVitalStateID.RESUSCITATION)) != 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Adds CPR time; each full interval of it counts as one treatment.
+	static void AddCprSeconds(notnull CTR_Participant participant, float seconds, int interval)
+	{
+		if (interval <= 0)
+			return;
+
+		int before = Math.Floor(participant.m_fCprSeconds / interval);
+		participant.m_fCprSeconds += seconds;
+		int after = Math.Floor(participant.m_fCprSeconds / interval);
+		participant.m_Stats.m_iHeals += after - before;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -176,15 +218,6 @@ class CTR_Operation : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnUnlistedTreatment(int playerId)
-	{
-		if (m_bClosed)
-			return;
-
-		GetOrAddParticipant(playerId, System.GetUnixTime()).m_Stats.m_iHeals++;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Maps a vanilla data collector stat to the operation stats.
 	static void AddStat(notnull CTR_PlayerStats stats, SCR_EDataStats stat, float amount)
 	{
@@ -197,8 +230,8 @@ class CTR_Operation : Managed
 			stats.m_iDeaths += count;
 		else if (stat == SCR_EDataStats.SHOTS)
 			stats.m_iShots += count;
-		else if (stat == SCR_EDataStats.BANDAGE_FRIENDLIES || stat == SCR_EDataStats.TOURNIQUET_FRIENDLIES || stat == SCR_EDataStats.SALINE_FRIENDLIES || stat == SCR_EDataStats.MORPHINE_FRIENDLIES)
-			stats.m_iHeals += count;
+		else if (stat == SCR_EDataStats.BANDAGE_FRIENDLIES)
+			stats.m_iHeals += count; // Drugs on others pay nothing: a morphine overdose is a prank, not a treatment.
 		else if (stat == SCR_EDataStats.DISTANCE_WALKED || stat == SCR_EDataStats.DISTANCE_DRIVEN || stat == SCR_EDataStats.DISTANCE_AS_OCCUPANT)
 			stats.m_fDistance += amount;
 	}
