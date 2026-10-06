@@ -6,6 +6,7 @@ class CTR_BaseTests
 	{
 		runner.Add(new CTR_Test_ShopPricing());
 		runner.Add(new CTR_Test_BaseSetup());
+		runner.Add(new CTR_Test_ShopWindowPages());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -120,6 +121,79 @@ class CTR_Test_BaseSetup : CTR_TestCase
 	{
 		m_aNearby.Insert(entity);
 		return true;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The base shop window pages the all-faction catalog (client UI of the Workbench host). It stays open for a few
+//! seconds so it can be looked at.
+class CTR_Test_ShopWindowPages : CTR_TestCase
+{
+	protected static const int SHOW_MS = 4000;
+	//! Weak: the menu system owns the dialog.
+	protected MRX_ShopMenu m_Menu;
+
+	//------------------------------------------------------------------------------------------------
+	override int GetTimeoutMs()
+	{
+		return SHOW_MS + 10000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		IEntity shopEntity;
+		if (gameMode)
+			shopEntity = CTR_DevTools.FindNear(gameMode.GetMainBasePos(), 40, MRX_ShopComponent);
+
+		if (!shopEntity)
+		{
+			Skip("no base shop");
+			return;
+		}
+
+		MRX_ShopComponent shop = MRX_ShopComponent.Cast(shopEntity.FindComponent(MRX_ShopComponent));
+		MRX_ShopDefinition definition = shop.GetDefinition();
+		m_Menu = MRX_ShopMenu.Open(shop);
+		if (!m_Menu || !definition)
+		{
+			Check(false, "shop window opens");
+			Finish();
+			return;
+		}
+
+		int items;
+		foreach (MRX_ShopItem item : definition.m_Catalog.m_aItems)
+		{
+			if (item.m_iPrice > 0)
+				items++;
+		}
+
+		int pages = (items + MRX_ShopMenu.PAGE_SIZE - 1) / MRX_ShopMenu.PAGE_SIZE;
+		CheckInt(m_Menu.GetPageCount(), pages, "pages of the whole catalog");
+		CheckInt(m_Menu.GetRowCount(), MRX_ShopMenu.PAGE_SIZE, "first page is full");
+
+		m_Menu.ShowPage(pages - 1);
+		CheckInt(m_Menu.GetRowCount(), items - (pages - 1) * MRX_ShopMenu.PAGE_SIZE, "last page holds the rest");
+
+		m_Menu.ShowPage(pages + 5);
+		CheckInt(m_Menu.GetRowCount(), items - (pages - 1) * MRX_ShopMenu.PAGE_SIZE, "pages beyond the end show the last one");
+
+		m_Menu.ShowCategory(1);
+		Check(m_Menu.GetRowCount() > 0 && m_Menu.GetRowCount() <= MRX_ShopMenu.PAGE_SIZE, "a category starts on its first page");
+
+		m_Menu.ShowCategory(0);
+		GetGame().GetCallqueue().CallLater(CloseMenu, SHOW_MS);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CloseMenu()
+	{
+		if (m_Menu)
+			m_Menu.Close();
+
+		Finish();
 	}
 }
 #endif
