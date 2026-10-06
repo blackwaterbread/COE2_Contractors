@@ -42,7 +42,7 @@ class CTR_Test_MarxOnlyPersistence : CTR_TestCase
 			if (currencies && currencies.Count() == 1)
 			{
 				CheckString(currencies[0].m_sId, MRX_Settings.DEFAULT_CURRENCY, "currency id");
-				CheckInt(currencies[0].m_iInitialBalance, 150, "starting cash");
+				CheckInt(currencies[0].m_iInitialBalance, 5000, "starting cash");
 			}
 		}
 

@@ -32,33 +32,36 @@ class CTR_Test_ShopPricing : CTR_TestCase
 	override protected void Run()
 	{
 		// Arsenal data as the vanilla and RHS catalogs have it.
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 8), 520, "M16A2 (supply 8)");
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Handguns/M9/Handgun_M9.et", SCR_EArsenalItemType.PISTOL, SCR_EArsenalItemMode.WEAPON, 5), 250, "pistol");
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et", SCR_EArsenalItemType.HEAL, SCR_EArsenalItemMode.CONSUMABLE, 0), 10, "field dressing");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 8), 900, "M16A2 reference price");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Handguns/M9/Handgun_M9.et", SCR_EArsenalItemType.PISTOL, SCR_EArsenalItemMode.WEAPON, 5), 700, "pistol reference price");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et", SCR_EArsenalItemType.HEAL, SCR_EArsenalItemMode.CONSUMABLE, 0), 8, "field dressing");
 
 		// RHS rifles keep the default type and some the default mode.
 		ResourceName rhsRifle = "Prefabs/Weapons/Rifles/M4A1/Rifle_M4A1_BLOCK_1.et";
 		CheckString(CTR_ShopPricing.GetCategory(rhsRifle, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT), CTR_ShopPricing.CATEGORY_RIFLES, "RHS rifle in default mode");
-		CheckInt(CTR_ShopPricing.GetPrice(rhsRifle, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT, 12), 680, "RHS rifle price");
+		CheckInt(CTR_ShopPricing.GetPrice(rhsRifle, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT, 12), 1200, "RHS rifle price");
 		ResourceName rhsMagazine = "Prefabs/Weapons/Magazines/6l23_plastic/Magazine_545x39_plastic_AK_30rnd_Ball_camo.et";
 		CheckString(CTR_ShopPricing.GetCategory(rhsMagazine, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT), CTR_ShopPricing.CATEGORY_AMMUNITION, "RHS magazine in default mode");
-		CheckInt(CTR_ShopPricing.GetPrice(rhsMagazine, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT, 2), 15, "RHS magazine price");
+		CheckInt(CTR_ShopPricing.GetPrice(rhsMagazine, SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.DEFAULT, 2), 27, "magazine priced from its supply cost");
 
-		// RHS weapon variants with supply cost 1 cost at least a bare weapon of their kind.
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/SVD/Rifle_SVD_PSO1.et", SCR_EArsenalItemType.SNIPER_RIFLE, SCR_EArsenalItemMode.WEAPON_VARIANTS, 1), 1000, "scoped SVD variant (supply 1)");
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/AKS74UN/Rifle_AKS74UN_x.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 1), 520, "rifle (supply 1)");
+		// Weapon variants: mounted attachments (a higher supply cost) add to the family price; RHS variants with supply
+		// cost 1 cost the bare weapon, and unknown rifles count at least a bare rifle's supply cost.
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/M4A1/Rifle_M4A1_BLOCK_0_NT4.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON_VARIANTS, 42), 1200 + 30 * CTR_ShopPricing.VARIANT_PRICE_PER_SUPPLY, "suppressed M4A1 variant");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/SVD/Rifle_SVD_PSO1.et", SCR_EArsenalItemType.SNIPER_RIFLE, SCR_EArsenalItemMode.WEAPON_VARIANTS, 1), 2000, "scoped SVD variant (supply 1)");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/AKS74UN/Rifle_AKS74UN_x.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 1), 800, "AKS-74UN variant (supply 1)");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/Unknown/Rifle_Unknown.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 1), 400 + 80 * 8, "unknown rifle (supply 1)");
 
-		// Launcher rockets are listed with the launchers but priced as ammunition.
+		// Launcher rockets are listed with the launchers, with their own prices.
 		ResourceName rocket = "Prefabs/Weapons/Ammo/Ammo_Rocket_PG7VM.et";
 		CheckString(CTR_ShopPricing.GetCategory(rocket, SCR_EArsenalItemType.ROCKET_LAUNCHER, SCR_EArsenalItemMode.AMMUNITION), CTR_ShopPricing.CATEGORY_LAUNCHERS, "rocket category");
-		CheckInt(CTR_ShopPricing.GetPrice(rocket, SCR_EArsenalItemType.ROCKET_LAUNCHER, SCR_EArsenalItemMode.AMMUNITION, 10), 55, "rocket price");
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Launchers/RPG7/Launcher_RPG7.et", SCR_EArsenalItemType.ROCKET_LAUNCHER, SCR_EArsenalItemMode.WEAPON, 55), 2400, "launcher price");
+		CheckInt(CTR_ShopPricing.GetPrice(rocket, SCR_EArsenalItemType.ROCKET_LAUNCHER, SCR_EArsenalItemMode.AMMUNITION, 10), 400, "rocket price");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Launchers/RPG7/Launcher_RPG7.et", SCR_EArsenalItemType.ROCKET_LAUNCHER, SCR_EArsenalItemMode.WEAPON, 55), 1000, "launcher price");
 
 		// Mortar parts and shells.
 		ResourceName mortarBarrel = "Prefabs/Items/Equipment/Mortars/M252/Part_M252_Barrel.et";
 		CheckString(CTR_ShopPricing.GetCategory(mortarBarrel, SCR_EArsenalItemType.EQUIPMENT, SCR_EArsenalItemMode.SUPPORT_STATION), CTR_ShopPricing.CATEGORY_HEAVY_WEAPONS, "mortar part");
-		CheckInt(CTR_ShopPricing.GetPrice(mortarBarrel, SCR_EArsenalItemType.EQUIPMENT, SCR_EArsenalItemMode.SUPPORT_STATION, 90), 465, "mortar part price");
-		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Ammo/Ammo_Shell_81mm_HE_M821.et", SCR_EArsenalItemType.MORTARS, SCR_EArsenalItemMode.AMMUNITION, 20), 105, "mortar shell price");
+		CheckInt(CTR_ShopPricing.GetPrice(mortarBarrel, SCR_EArsenalItemType.EQUIPMENT, SCR_EArsenalItemMode.SUPPORT_STATION, 90), 8000, "mortar part price");
+		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Ammo/Ammo_Shell_81mm_HE_M821.et", SCR_EArsenalItemType.MORTARS, SCR_EArsenalItemMode.AMMUNITION, 20), 600, "mortar shell price");
 
 		// Attachments by folder.
 		CheckString(CTR_ShopPricing.GetCategory("Prefabs/Weapons/Attachments/Optics/Optic_SPP/Optic_SPP.et", SCR_EArsenalItemType.EQUIPMENT, SCR_EArsenalItemMode.ATTACHMENT), CTR_ShopPricing.CATEGORY_OPTICS, "night sight typed as equipment");
@@ -85,9 +88,17 @@ class CTR_Test_ShopPricing : CTR_TestCase
 		CheckString(CTR_ShopPricing.GetShop(CTR_ShopPricing.CATEGORY_MEDICAL), CTR_ShopPricing.SHOP_SUPPLIES, "medical in the supplies shop");
 		CheckString(CTR_ShopPricing.GetShop(string.Empty), string.Empty, "no shop for unsold items");
 
-		// One operation (about 650) buys a basic kit: rifle, six magazines, four dressings, a tourniquet.
-		int kit = 520 + 6 * 15 + 4 * 10 + 10;
-		Check(kit <= 700 && kit >= 600, "basic kit near one operation's pay: " + kit);
+		// Balance: a typical operation (clear area, destroy cache, kill officer) buys a professional kit (carbine, ACOG,
+		// six magazines, armored plate carrier, FAST helmet, PVS-14) with money left, but not two of them.
+		int kit = CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/M4A1/Rifle_M4A1_BLOCK_II.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 12);
+		kit += CTR_ShopPricing.GetPrice("Prefabs/Weapons/Attachments/Optics/ta31rco/Optic_TA31RCO.et", SCR_EArsenalItemType.WEAPON_ATTACHMENT, SCR_EArsenalItemMode.ATTACHMENT, 32);
+		kit += 6 * CTR_ShopPricing.GetPrice("Prefabs/Weapons/Magazines/Pmag/Magazine_556x45_Pmag.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.AMMUNITION, 2);
+		kit += CTR_ShopPricing.GetPrice("Prefabs/Characters/Vests/Vest_JPC/Vest_JPC.et", SCR_EArsenalItemType.VEST_AND_WAIST, SCR_EArsenalItemMode.DEFAULT, 25);
+		kit += CTR_ShopPricing.GetPrice("Prefabs/Characters/HeadGear/Helmet_OPSCORE/Helmet_OPSCORE.et", SCR_EArsenalItemType.HEADWEAR, SCR_EArsenalItemMode.DEFAULT, 2);
+		kit += CTR_ShopPricing.GetPrice("Prefabs/Items/Equipment/Nightvision/PVS14/NVG_PVS14_Base.et", SCR_EArsenalItemType.EQUIPMENT, SCR_EArsenalItemMode.DEFAULT, 10);
+		CTR_Settings settings = CTR_Settings.CreateDefault();
+		int operation = settings.GetTaskReward("COE_ClearAreaTaskBuilder", string.Empty) + settings.GetTaskReward("COE_DestroyCacheTaskBuilder", string.Empty) + settings.GetTaskReward("COE_EnemyOfficerTaskBuilder", string.Empty);
+		Check(kit * 4 >= operation && kit * 4 <= operation * 3, string.Format("professional kit %1 is a quarter to three quarters of an operation's pay %2", kit, operation));
 		Finish();
 	}
 }
@@ -162,7 +173,7 @@ class CTR_Test_BaseSetup : CTR_TestCase
 			if (shopId == CTR_ShopPricing.SHOP_WEAPONS)
 			{
 				MRX_ShopItem rifle = definition.m_Catalog.FindItem("rifle_m16a2");
-				Check(rifle && rifle.m_iPrice == 520, "M16A2 for sale at 520");
+				Check(rifle && rifle.m_iPrice == 900, "M16A2 for sale at 900");
 				Check(definition.m_Catalog.FindItem("rifle_m4a1_block_ii") != null, "RHS rifle for sale");
 			}
 			else if (shopId == CTR_ShopPricing.SHOP_GEAR)

@@ -76,18 +76,18 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		};
 
 		int sum = CTR_PayoutCalculator.PriceTasks(settings, tasks);
-		CheckInt(tasks[0].m_iAmount, 150, "clear area");
-		CheckInt(tasks[1].m_iAmount, 350, "capture officer (prefab entry before the builder entry)");
-		CheckInt(tasks[2].m_iAmount, 250, "kill officer (builder entry)");
+		CheckInt(tasks[0].m_iAmount, 6000, "clear area");
+		CheckInt(tasks[1].m_iAmount, 18000, "capture officer (prefab entry before the builder entry)");
+		CheckInt(tasks[2].m_iAmount, 12000, "kill officer (builder entry)");
 		CheckInt(tasks[3].m_iAmount, 0, "failed task pays nothing");
 		CheckInt(tasks[4].m_iAmount, settings.m_iDefaultTaskReward, "unknown builder pays the default");
-		CheckInt(sum, 150 + 350 + 250 + 150, "sum of completed tasks");
+		CheckInt(sum, 6000 + 18000 + 12000 + 6000, "sum of completed tasks");
 
 		// The shipped config must match the built-in defaults.
 		CTR_Settings loaded = CTR_Settings.Get();
 		CheckString(loaded.m_sCurrency, MRX_Settings.DEFAULT_CURRENCY, "config currency");
-		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.CAPTIVE_TASK), 350, "config capture officer");
-		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.KILL_TASK), 250, "config kill officer");
+		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.CAPTIVE_TASK), 18000, "config capture officer");
+		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.KILL_TASK), 12000, "config kill officer");
 		CheckInt(loaded.m_iReturnDelaySeconds, 10, "config return delay");
 		Finish();
 	}
@@ -101,20 +101,22 @@ class CTR_Test_PayoutRules : CTR_TestCase
 	{
 		CTR_Settings settings = CTR_Settings.CreateDefault();
 
-		CTR_Payout payout = CTR_PayoutCalculator.Calculate(settings, true, 600, CTR_PayoutTests.CreateStats(true, 10, 1, 1, 2));
-		CheckInt(payout.m_iTasks, 600, "task line");
-		CheckInt(payout.m_iKills, 100, "kill line");
-		CheckInt(payout.m_iHeals, 30, "heal line");
-		CheckInt(payout.m_iTeamKills, -100, "team kill line");
-		CheckInt(payout.m_iDeaths, -50, "death line");
-		CheckInt(payout.m_iTotal, 580, "total");
+		// A typical operation: clear area, destroy cache, kill officer.
+		int tasks = 6000 + 8000 + 12000;
+		CTR_Payout payout = CTR_PayoutCalculator.Calculate(settings, true, tasks, CTR_PayoutTests.CreateStats(true, 10, 1, 1, 2));
+		CheckInt(payout.m_iTasks, tasks, "task line");
+		CheckInt(payout.m_iKills, 10 * 250, "kill line");
+		CheckInt(payout.m_iHeals, 2 * 300, "heal line");
+		CheckInt(payout.m_iTeamKills, -10000, "team kill line");
+		CheckInt(payout.m_iDeaths, -2500, "death line");
+		CheckInt(payout.m_iTotal, tasks + 2500 + 600 - 10000 - 2500, "total");
 
-		CheckInt(CTR_PayoutCalculator.Calculate(settings, true, 600, CTR_PayoutTests.CreateStats(false, 10)).m_iTotal, 0, "never entered the AO");
-		CheckInt(CTR_PayoutCalculator.Calculate(settings, false, 600, CTR_PayoutTests.CreateStats(true, 10)).m_iTotal, 0, "cancelled operation");
+		CheckInt(CTR_PayoutCalculator.Calculate(settings, true, tasks, CTR_PayoutTests.CreateStats(false, 10)).m_iTotal, 0, "never entered the AO");
+		CheckInt(CTR_PayoutCalculator.Calculate(settings, false, tasks, CTR_PayoutTests.CreateStats(true, 10)).m_iTotal, 0, "cancelled operation");
 		CheckInt(CTR_PayoutCalculator.Calculate(settings, true, 0, CTR_PayoutTests.CreateStats(true, 10, 0, 0, 5)).m_iTotal, 0, "no completed task, no personal pay");
 
-		CTR_Payout negative = CTR_PayoutCalculator.Calculate(settings, true, 150, CTR_PayoutTests.CreateStats(true, 0, 3));
-		CheckInt(negative.m_iTeamKills, -300, "team kill line keeps its full value");
+		CTR_Payout negative = CTR_PayoutCalculator.Calculate(settings, true, 6000, CTR_PayoutTests.CreateStats(true, 0, 3));
+		CheckInt(negative.m_iTeamKills, -30000, "team kill line keeps its full value");
 		CheckInt(negative.m_iTotal, 0, "total is not negative");
 
 		CheckString(CTR_PayoutCalculator.GetIdempotencyKey("op1", "owner1"), "op:op1:owner1", "idempotency key");
@@ -197,23 +199,23 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		CTR_OperationResult a = settlement.BuildResult(5, 10);
 		CheckInt(a.m_Stats.m_iKills, 3, "sessions of owner-a merged");
 		Check(a.m_Stats.m_bEnteredAO, "owner-a entered in one session");
-		CheckInt(a.m_Payout.m_iTotal, 150 + 30, "owner-a pay");
+		CheckInt(a.m_Payout.m_iTotal, 6000 + 3 * 250, "owner-a pay");
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.PAID, "owner-a status");
 		Check(a.m_bHasBalance, "owner-a balance known");
-		CheckInt(a.m_iBalance, 180, "owner-a balance");
+		CheckInt(a.m_iBalance, 6750, "owner-a balance");
 
 		CTR_OperationResult b = settlement.BuildResult(2, 10);
 		CheckInt(b.m_Payout.m_iTotal, 0, "owner-b did not enter");
 		CheckInt(b.m_ePayStatus, CTR_EPayStatus.NONE, "owner-b status");
 
 		CTR_OperationResult noOwner = settlement.BuildResult(3, 10);
-		CheckInt(noOwner.m_Payout.m_iTotal, 150, "player without owner earned pay");
+		CheckInt(noOwner.m_Payout.m_iTotal, 6000, "player without owner earned pay");
 		CheckInt(noOwner.m_ePayStatus, CTR_EPayStatus.NO_OWNER, "player without owner is not paid");
 
 		CTR_OperationResult stranger = settlement.BuildResult(99, 10);
 		CheckInt(stranger.m_Payout.m_iTotal, 0, "player not in the operation");
 		CheckInt(stranger.m_iParticipants, 2, "participants");
-		CheckInt(stranger.m_iTeamPay, 180 + 150, "team pay");
+		CheckInt(stranger.m_iTeamPay, 6750 + 6000, "team pay");
 		CheckInt(stranger.CountCompletedTasks(), 1, "completed tasks");
 
 		m_Second = CreateSettlement(true);
@@ -226,7 +228,7 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 	{
 		CTR_OperationResult a = settlement.BuildResult(1, 10);
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.ALREADY_PAID, "second settlement of the same operation");
-		CheckInt(a.m_iBalance, 180, "no second pay");
+		CheckInt(a.m_iBalance, 6750, "no second pay");
 
 		m_Cancelled = CreateSettlement(false);
 		m_Cancelled.GetOnDone().Insert(OnCancelledDone);

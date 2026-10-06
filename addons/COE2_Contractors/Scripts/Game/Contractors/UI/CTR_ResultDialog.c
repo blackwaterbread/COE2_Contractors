@@ -201,7 +201,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (!m_Result.m_bHasBalance)
 			return string.Empty;
 
-		return string.Format("Balance %1 %2", m_Result.m_iBalance, m_Result.m_sCurrency);
+		return "Balance " + MRX_TextFormat.Money(m_Result.m_iBalance, m_Result.m_sCurrency);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddSection("Team");
 		AddLine("Tasks completed", string.Format("%1 / %2", m_Result.CountCompletedTasks(), m_Result.m_aTasks.Count()));
 		AddLine("Contractors in the AO", m_Result.m_iParticipants.ToString());
-		AddLine("Total earned", string.Format("%1 %2", m_Result.m_iTeamPay, m_Result.m_sCurrency));
+		AddLine("Total earned", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		AddLine("Operation time", FormatDuration(m_Result.m_iDurationSeconds));
 	}
 
@@ -294,9 +294,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	static string FormatAmount(int amount)
 	{
 		if (amount > 0)
-			return "+" + amount;
+			return "+" + MRX_TextFormat.Amount(amount);
 
-		return amount.ToString();
+		return MRX_TextFormat.Amount(amount);
 	}
 
 	//------------------------------------------------------------------------------------------------

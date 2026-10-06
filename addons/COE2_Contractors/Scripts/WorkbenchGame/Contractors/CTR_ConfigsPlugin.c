@@ -26,7 +26,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const string PAY_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_Settings.conf";
 	static const string SHOP_DIR = "$COE2_Contractors:Configs/Contractors/Shop/";
 
-	static const int STARTING_CASH = 150;
+	static const int STARTING_CASH = 5000;
 
 	//! Keeps created container resources alive until the plugin finishes.
 	protected ref array<ref Resource> m_aHolders = {};

@@ -45,19 +45,19 @@ class CTR_Settings
 	[Attribute(desc: "Pay per completed task type. The first matching entry counts, so entries with a task prefab go before the builder's entry without one.")]
 	ref array<ref CTR_TaskReward> m_aTaskRewards;
 
-	[Attribute("150", desc: "Pay for a completed task whose builder has no entry", params: "0 inf")]
+	[Attribute("6000", desc: "Pay for a completed task whose builder has no entry", params: "0 inf")]
 	int m_iDefaultTaskReward;
 
-	[Attribute("10", desc: "Per enemy killed (players, AI, run over)", params: "0 inf")]
+	[Attribute("250", desc: "Per enemy killed (players, AI, run over)", params: "0 inf")]
 	int m_iKillReward;
 
-	[Attribute("100", desc: "Deducted per friendly or civilian killed", params: "0 inf")]
+	[Attribute("10000", desc: "Deducted per friendly or civilian killed", params: "0 inf")]
 	int m_iTeamKillPenalty;
 
-	[Attribute("50", desc: "Deducted per death", params: "0 inf")]
+	[Attribute("2500", desc: "Deducted per death", params: "0 inf")]
 	int m_iDeathPenalty;
 
-	[Attribute("15", desc: "Per bandage, tourniquet, saline or morphine applied to someone else", params: "0 inf")]
+	[Attribute("300", desc: "Per bandage, tourniquet, saline or morphine applied to someone else", params: "0 inf")]
 	int m_iFriendlyHealReward;
 
 	[Attribute("10", desc: "Seconds between the result screen and the return to base", params: "0 120")]
@@ -90,22 +90,22 @@ class CTR_Settings
 	{
 		CTR_Settings settings = new CTR_Settings();
 		settings.m_sCurrency = MRX_Settings.DEFAULT_CURRENCY;
-		settings.m_iDefaultTaskReward = 150;
-		settings.m_iKillReward = 10;
-		settings.m_iTeamKillPenalty = 100;
-		settings.m_iDeathPenalty = 50;
-		settings.m_iFriendlyHealReward = 15;
+		settings.m_iDefaultTaskReward = 6000;
+		settings.m_iKillReward = 250;
+		settings.m_iTeamKillPenalty = 10000;
+		settings.m_iDeathPenalty = 2500;
+		settings.m_iFriendlyHealReward = 300;
 		settings.m_iReturnDelaySeconds = 10;
 		settings.m_aTaskRewards = {
-			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 150),
-			CTR_TaskReward.Create("COE_FindIntelTaskBuilder", 200),
-			CTR_TaskReward.Create("COE_DestroyCacheTaskBuilder", 200),
-			CTR_TaskReward.Create("COE_DemineEffectModuleTaskBuilder", 200),
-			CTR_TaskReward.Create("COE_DestroyInstallationTaskBuilder", 250),
-			CTR_TaskReward.Create("COE_DestroyVehicleTaskBuilder", 250),
-			CTR_TaskReward.Create("COE_EnemyOfficerTaskBuilder", 350, "{DE9C612D13BF9B18}Prefabs/Tasks/KSC_TakeCaptiveTask.et"),
-			CTR_TaskReward.Create("COE_EnemyOfficerTaskBuilder", 250),
-			CTR_TaskReward.Create("COE_FreeHostageTaskBuilder", 350)
+			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),
+			CTR_TaskReward.Create("COE_FindIntelTaskBuilder", 8000),
+			CTR_TaskReward.Create("COE_DestroyCacheTaskBuilder", 8000),
+			CTR_TaskReward.Create("COE_DemineEffectModuleTaskBuilder", 7000),
+			CTR_TaskReward.Create("COE_DestroyInstallationTaskBuilder", 10000),
+			CTR_TaskReward.Create("COE_DestroyVehicleTaskBuilder", 10000),
+			CTR_TaskReward.Create("COE_EnemyOfficerTaskBuilder", 18000, "{DE9C612D13BF9B18}Prefabs/Tasks/KSC_TakeCaptiveTask.et"),
+			CTR_TaskReward.Create("COE_EnemyOfficerTaskBuilder", 12000),
+			CTR_TaskReward.Create("COE_FreeHostageTaskBuilder", 20000)
 		};
 		return settings;
 	}
