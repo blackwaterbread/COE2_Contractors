@@ -14,8 +14,8 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 	static const ResourceName STASH_PREFAB = "{66BACE8BD545B8C2}Prefabs/Marx/Stash/MRX_StashWardrobe.et";
 	static const string QUARTERMASTER_FILE = "$COE2_Contractors:Prefabs/Contractors/CTR_Quartermaster.et";
 	static const ResourceName QUARTERMASTER_BASE = "{DE15FB5FAFC3E63F}Prefabs/Characters/Factions/BLUFOR/US_Army/Character_US_Officer.et";
-	//! Next to the stash wardrobe, along the same wall, facing into the hall.
-	static const string QUARTERMASTER_POSITION = "2.4 0 6.1";
+	//! Between the equipment shop and the stash wardrobe, along the same wall, facing into the hall.
+	static const string QUARTERMASTER_POSITION = "-2.8 0 5.9";
 	//! Entity IDs of the FIA arsenal boxes in COE_Hideout_01.et (inherited children of the override).
 	static const string WEAPONS_BOX_ID = "60A042236B427BA4";
 	static const string EQUIPMENT_BOX_ID = "61288E8539ECF97D";

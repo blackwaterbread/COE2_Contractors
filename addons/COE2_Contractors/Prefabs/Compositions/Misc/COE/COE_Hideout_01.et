@@ -76,7 +76,7 @@ COE_MainBaseEntity {
   }
   SCR_ChimeraCharacter : "{DEBC99FFA8BFF265}Prefabs/Contractors/CTR_Quartermaster.et" {
    ID "6A8D252955E80A07"
-   coords 2.4 0 6.1
+   coords -2.8 0 5.9
    angles 0 180 0
   }
  }
