@@ -101,7 +101,7 @@ enum CTR_EPayStatus
 class CTR_OperationResult : Managed
 {
 	string m_sOperationId;
-	//! All tasks finished (false: cancelled before).
+	//! All tasks finished (false: ended early by the commander).
 	bool m_bFinished;
 	int m_iDurationSeconds;
 	ref array<ref CTR_AreaInfo> m_aAreas = {};
@@ -135,10 +135,10 @@ class CTR_OperationResult : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Paid at least one completed task.
+	//! Paid at least one completed task, also when ended early.
 	bool IsSuccess()
 	{
-		return m_bFinished && CountCompletedTasks() > 0;
+		return CountCompletedTasks() > 0;
 	}
 
 	//------------------------------------------------------------------------------------------------

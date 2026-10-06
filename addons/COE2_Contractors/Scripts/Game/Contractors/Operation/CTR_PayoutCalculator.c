@@ -1,5 +1,5 @@
 //! Pay rules, without engine dependencies:
-//! - Only an operation whose tasks all finished pays; a cancelled one pays nothing.
+//! - An operation ended early (the commander cancels the AO) pays its completed tasks like a finished one.
 //! - Only players who entered an AO are paid.
 //! - Every completed task pays its amount to every participant; failed tasks pay nothing.
 //! - Without a completed task there is no pay at all, so personal lines cannot pay on their own.
@@ -27,10 +27,10 @@ class CTR_PayoutCalculator
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static CTR_Payout Calculate(notnull CTR_Settings settings, bool finished, int taskPay, notnull CTR_PlayerStats stats)
+	static CTR_Payout Calculate(notnull CTR_Settings settings, int taskPay, notnull CTR_PlayerStats stats)
 	{
 		CTR_Payout payout = new CTR_Payout();
-		if (!finished || !stats.m_bEnteredAO || taskPay <= 0)
+		if (!stats.m_bEnteredAO || taskPay <= 0)
 			return payout;
 
 		payout.m_iTasks = taskPay;

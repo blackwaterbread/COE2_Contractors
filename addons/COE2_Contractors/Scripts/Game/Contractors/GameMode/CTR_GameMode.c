@@ -1,6 +1,6 @@
 //! Operations pay instead of ending with COE2's exfil task:
 //! AO generated -> operation tracked -> all tasks finished -> pay and result screen -> return to base after a delay.
-//! A cancelled operation (commander, wipe) pays nothing and shows a failed result; COE2 returns everyone itself.
+//! An operation ended early (the commander cancels the AO) still pays its completed tasks; COE2 returns everyone itself.
 modded class COE_GameMode
 {
 	protected ref CTR_Operation m_CTR_Operation;
@@ -104,7 +104,7 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Ending the AO before its tasks are finished cancels the operation.
+	//! Ending the AO before its tasks are finished ends the operation early: its completed tasks still pay.
 	override protected void DeleteAO()
 	{
 		if (m_CTR_Operation && !m_CTR_Operation.IsClosed())
@@ -136,7 +136,7 @@ modded class COE_GameMode
 		if (finished)
 			return "finished";
 
-		return "cancelled";
+		return "ended early";
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -132,7 +132,7 @@ class CTR_Settlement : Managed
 
 		foreach (CTR_PayEntry entry : m_aEntries)
 		{
-			entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_bFinished, m_iTaskPay, entry.m_Stats);
+			entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats);
 		}
 	}
 

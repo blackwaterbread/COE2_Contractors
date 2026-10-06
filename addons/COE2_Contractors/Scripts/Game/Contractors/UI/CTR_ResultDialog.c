@@ -49,7 +49,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static string GetTitle(CTR_OperationResult result)
 	{
 		if (!result.m_bFinished)
+		{
+			if (result.IsSuccess())
+				return "Operation ended early";
+
 			return "Operation cancelled";
+		}
 
 		if (!result.IsSuccess())
 			return "Operation failed";
@@ -142,10 +147,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		CTR_PlayerStats stats = m_Result.m_Stats;
 
 		if (!m_Result.m_bFinished)
-		{
-			AddLine("The operation was cancelled before all tasks were finished.", string.Empty, COLOR_MUTED);
-		}
-		else if (!stats.m_bEnteredAO)
+			AddLine("Ended before all tasks were finished: completed tasks still pay.", string.Empty, COLOR_MUTED);
+
+		if (!stats.m_bEnteredAO)
 		{
 			AddLine("You did not enter the AO.", string.Empty, COLOR_MUTED);
 		}
