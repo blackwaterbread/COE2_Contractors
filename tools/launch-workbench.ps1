@@ -21,8 +21,13 @@ Passes -ctrTests: the Workbench-only Contractors test harness runs whenever Play
 .PARAMETER AutoCloseTests
 Passes -ctrTestsAutoClose: the test harness leaves Play mode after its run.
 
+.PARAMETER NoTestIdentity
+Do not pass -ctrTestIdentity. By default it is passed: Workbench started without the launcher gives players no
+backend identity, so Marx would keep the wallet, shop and stash off for them; with it they get a name-based test
+owner ID (Workbench only, never in the game).
+
 .PARAMETER TestIdentity
-Passes -ctrTestIdentity: players without a backend identity get a name-based test owner ID in the test harness.
+Kept for older command lines; the test identity is on by default now.
 
 .PARAMETER NoScriptAuthorizeAll
 Do not pass -scriptAuthorizeAll (which suppresses the "Script Authorization Required" prompt).
@@ -49,6 +54,7 @@ param(
 	[switch]$Tests,
 	[switch]$AutoCloseTests,
 	[switch]$TestIdentity,
+	[switch]$NoTestIdentity,
 	[switch]$NoScriptAuthorizeAll,
 	[string]$WorkbenchExe,
 	[string]$GameDir,
@@ -178,7 +184,7 @@ if ($AutoCloseTests)
 	$arguments += "-ctrTestsAutoClose"
 }
 
-if ($TestIdentity)
+if (-not $NoTestIdentity)
 {
 	$arguments += "-ctrTestIdentity"
 }

@@ -222,8 +222,9 @@ modded class COE_GameMode
 }
 
 //------------------------------------------------------------------------------------------------
-//! Test sessions only (-ctrTestIdentity): a player without a backend identity gets a stable owner ID derived from
-//! the player name, so the tests also run while the Bohemia backend is unreachable.
+//! Workbench sessions with -ctrTestIdentity (the launch script's default): a player without a backend identity gets a
+//! stable owner ID derived from the player name. Workbench started without the launcher has no backend identity, and
+//! Marx keeps wallet, shop and stash off for players without an owner.
 modded class MRX_IdentityService
 {
 	//------------------------------------------------------------------------------------------------
