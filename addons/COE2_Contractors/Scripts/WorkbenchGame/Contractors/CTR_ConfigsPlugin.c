@@ -1,7 +1,7 @@
 // Development tool: creates the Contractors persistence, Marx settings and systems configs, the mission headers, the
-// pay settings and the shop catalog.
+// pay settings and the shop catalogs.
 // Object IDs come from Workbench.GenerateGloballyUniqueID64(); resource GUIDs from resource registration.
-// Existing files are never overwritten.
+// Existing files are never overwritten, except the generated shop catalogs.
 
 [WorkbenchPluginAttribute(name: "Create Contractors Configs", category: "Contractors", wbModules: { "WorldEditor" })]
 class CTR_ConfigsPlugin : WorldEditorPlugin
@@ -24,19 +24,20 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const string MARX_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_MarxSettings.conf";
 	static const string SYSTEMS_FILE = "$COE2_Contractors:Configs/Contractors/Systems/CTR_Systems.conf";
 	static const string PAY_SETTINGS_FILE = "$COE2_Contractors:Configs/Contractors/CTR_Settings.conf";
-	static const string SHOP_CATALOG_FILE = "$COE2_Contractors:Configs/Contractors/Shop/CTR_ShopCatalog.conf";
+	static const string SHOP_DIR = "$COE2_Contractors:Configs/Contractors/Shop/";
 
 	static const int STARTING_CASH = 150;
 
 	//! Keeps created container resources alive until the plugin finishes.
 	protected ref array<ref Resource> m_aHolders = {};
+	protected ref map<string, int> m_mCategoryOrder = new map<string, int>();
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
 		Print(TAG + "start");
 		CreatePaySettings();
-		CreateShopCatalog();
+		CreateShopCatalogs();
 		ResourceName persistence = CreatePersistenceConfig();
 		ResourceName settings = CreateMarxSettings();
 		if (persistence.IsEmpty() || settings.IsEmpty())
@@ -68,14 +69,32 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Every item with arsenal data in the vanilla faction item catalogs, priced by CTR_ShopPricing.
-	protected ResourceName CreateShopCatalog()
+	//! \return Catalog file of a Contractors shop (CTR_ShopPricing.SHOP_*).
+	static string GetShopCatalogFile(string shopId)
+	{
+		if (shopId == CTR_ShopPricing.SHOP_WEAPONS)
+			return SHOP_DIR + "CTR_ShopWeapons.conf";
+
+		if (shopId == CTR_ShopPricing.SHOP_GEAR)
+			return SHOP_DIR + "CTR_ShopGear.conf";
+
+		return SHOP_DIR + "CTR_ShopSupplies.conf";
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! One catalog per shop with every item that has arsenal data in the vanilla and RHS faction item catalogs, priced
+	//! and sorted into categories by CTR_ShopPricing. Generated catalogs are rewritten in place (same resource GUID).
+	protected void CreateShopCatalogs()
 	{
 		array<ResourceName> sources = {
 			"{5F7EC52FC40A03E2}Configs/EntityCatalog/US/InventoryItems_EntityCatalog_US.conf",
 			"{C53421647C3D0D2E}Configs/EntityCatalog/USSR/InventoryItems_EntityCatalog_USSR.conf",
 			"{E908001749419691}Configs/EntityCatalog/FIA/InventoryItems_EntityCatalog_FIA.conf",
-			"{9D7E5804BB2E9B28}Configs/EntityCatalog/CIV/InventoryItems_EntityCatalog_CIV.conf"
+			"{9D7E5804BB2E9B28}Configs/EntityCatalog/CIV/InventoryItems_EntityCatalog_CIV.conf",
+			"{3BFC57A750823093}Configs/EntityCatalog/USMC/USMC_InventoryItems.conf",
+			"{4AB9A3D2B81A7855}Configs/EntityCatalog/RHS_MSV/MSV_InventoryItems.conf",
+			"{07394ECD0D03534C}Configs/EntityCatalog/ION/ION_InventoryItems.conf",
+			"{1FFB8A9964E1F4E4}Configs/EntityCatalog/FFA/FFA_InventoryItems.conf"
 		};
 
 		array<ref MRX_ShopItem> items = {};
@@ -106,19 +125,30 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 			}
 		}
 
-		MRX_ShopCatalog shopCatalog = new MRX_ShopCatalog();
-		shopCatalog.m_aItems = SortShopItems(items);
-		Print(TAG + string.Format("shop catalog: %1 items", shopCatalog.m_aItems.Count()));
-
-		Resource holder = BaseContainerTools.CreateContainerFromInstance(shopCatalog);
-		if (!holder || !holder.IsValid())
+		array<string> shops = {CTR_ShopPricing.SHOP_WEAPONS, CTR_ShopPricing.SHOP_GEAR, CTR_ShopPricing.SHOP_SUPPLIES};
+		foreach (string shop : shops)
 		{
-			Print(TAG + "CreateContainerFromInstance failed: MRX_ShopCatalog", LogLevel.ERROR);
-			return ResourceName.Empty;
-		}
+			array<ref MRX_ShopItem> shopItems = {};
+			foreach (MRX_ShopItem item : items)
+			{
+				if (CTR_ShopPricing.GetShop(item.m_sCategory) == shop)
+					shopItems.Insert(item);
+			}
 
-		m_aHolders.Insert(holder);
-		return SaveAndRegister(holder.GetResource().ToBaseContainer(), SHOP_CATALOG_FILE);
+			MRX_ShopCatalog shopCatalog = new MRX_ShopCatalog();
+			shopCatalog.m_aItems = SortShopItems(shopItems);
+			Print(TAG + string.Format("%1 catalog: %2 items", shop, shopCatalog.m_aItems.Count()));
+
+			Resource holder = BaseContainerTools.CreateContainerFromInstance(shopCatalog);
+			if (!holder || !holder.IsValid())
+			{
+				Print(TAG + "CreateContainerFromInstance failed: MRX_ShopCatalog " + shop, LogLevel.ERROR);
+				continue;
+			}
+
+			m_aHolders.Insert(holder);
+			SaveAndRegister(holder.GetResource().ToBaseContainer(), GetShopCatalogFile(shop), true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -139,7 +169,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 
 		SCR_EArsenalItemType type = arsenal.GetItemType();
 		SCR_EArsenalItemMode mode = arsenal.GetItemMode();
-		int price = CTR_ShopPricing.GetPrice(type, mode, arsenal.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, false));
+		int price = CTR_ShopPricing.GetPrice(prefab, type, mode, arsenal.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT, false));
 		if (price <= 0)
 			return null;
 
@@ -154,7 +184,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		MRX_ShopItem item = new MRX_ShopItem();
 		item.m_sId = id;
 		item.m_sPrefab = prefab;
-		item.m_sCategory = CTR_ShopPricing.GetCategory(type, mode);
+		item.m_sCategory = CTR_ShopPricing.GetCategory(prefab, type, mode);
 		item.m_sCurrency = MRX_Settings.DEFAULT_CURRENCY;
 		item.m_iPrice = price;
 		item.m_iSellPrice = -1;
@@ -163,7 +193,8 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! By category, then price, then ID. Items move into the sorted array before leaving the source, so they stay referenced.
+	//! By category, then ID, so the variants of a weapon or a piece of clothing stand together. Items move into the
+	//! sorted array before leaving the source, so they stay referenced.
 	protected array<ref MRX_ShopItem> SortShopItems(notnull array<ref MRX_ShopItem> items)
 	{
 		array<ref MRX_ShopItem> sorted = {};
@@ -186,15 +217,23 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	//------------------------------------------------------------------------------------------------
 	protected int CompareShopItems(MRX_ShopItem a, MRX_ShopItem b)
 	{
-		int categoryA = CTR_ShopPricing.GetCategoryOrder(a.m_sCategory);
-		int categoryB = CTR_ShopPricing.GetCategoryOrder(b.m_sCategory);
-		if (categoryA != categoryB)
-			return categoryA - categoryB;
-
-		if (a.m_iPrice != b.m_iPrice)
-			return a.m_iPrice - b.m_iPrice;
+		if (a.m_sCategory != b.m_sCategory)
+			return GetCategoryOrder(a.m_sCategory) - GetCategoryOrder(b.m_sCategory);
 
 		return a.m_sId.Compare(b.m_sId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! CTR_ShopPricing.GetCategoryOrder, cached: sorting a catalog compares items hundreds of thousands of times.
+	protected int GetCategoryOrder(string category)
+	{
+		int order;
+		if (m_mCategoryOrder.Find(category, order))
+			return order;
+
+		order = CTR_ShopPricing.GetCategoryOrder(category);
+		m_mCategoryOrder.Insert(category, order);
+		return order;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -276,21 +315,38 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		root.SetAncestor(parent);
 		Log(mapName + " SystemsConfig", root.Set("SystemsConfig", systems));
 		Log(mapName + " m_sName", root.Set("m_sName", "COE2: Contractors - " + mapName));
-		Log(mapName + " m_sDescription", root.Set("m_sDescription", "Unofficial COE2 variant: completed operations pay, gear comes from the base shop, and a personal stash keeps it."));
+		Log(mapName + " m_sDescription", root.Set("m_sDescription", "Unofficial COE2 variant: completed operations pay, gear comes from the base shops, and a personal stash keeps it."));
+		Log(mapName + " player faction", root.Set("m_sCOE_DefaultPlayerFactionKey", CTR_Factions.PLAYER));
+		Log(mapName + " enemy faction", root.Set("m_sCOE_DefaultEnemyFactionKey", CTR_Factions.ENEMY));
+		Log(mapName + " civilian faction", root.Set("m_sCOE_DefaultCivilianFactionKey", CTR_Factions.CIVILIAN));
 
 		string fileName = FilePath.StripExtension(FilePath.StripPath(parent));
 		SaveAndRegister(root, "$COE2_Contractors:Missions/CTR_" + fileName + ".conf");
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected ResourceName SaveAndRegister(BaseContainer root, string file)
+	//! \param overwrite Rewrites an existing file in place; its .meta file and so its resource GUID stay.
+	protected ResourceName SaveAndRegister(BaseContainer root, string file, bool overwrite = false)
 	{
 		string absPath;
 		Workbench.GetAbsolutePath(file, absPath, false);
 		if (FileIO.FileExists(absPath))
 		{
-			Print(TAG + "already exists, not overwritten: " + absPath, LogLevel.WARNING);
-			return GetResourceName(absPath);
+			if (!overwrite)
+			{
+				Print(TAG + "already exists, not overwritten: " + absPath, LogLevel.WARNING);
+				return GetResourceName(absPath);
+			}
+
+			if (!BaseContainerTools.SaveContainer(root, ResourceName.Empty, file))
+			{
+				Print(TAG + "SaveContainer failed: " + file, LogLevel.ERROR);
+				return ResourceName.Empty;
+			}
+
+			ResourceName rewritten = GetResourceName(absPath);
+			Print(TAG + "rewritten " + rewritten);
+			return rewritten;
 		}
 
 		FileIO.MakeDirectory(FilePath.StripFileName(absPath));

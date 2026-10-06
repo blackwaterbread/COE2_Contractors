@@ -1,8 +1,9 @@
 #ifdef WORKBENCH
-//! Workbench Play only: when nothing sets the factions (no mission header does in Workbench), the game starts with
-//! US players against USSR and CIV civilians through COE2's own default faction path, and the host becomes commander.
-//! So a hand test deploys at the base right away; the commander can still change the factions in the scenario
-//! attributes. Off for the test harness (-ctrTests), whose tests need the host character that COE2 replaces.
+//! Workbench Play only: when nothing sets the factions (Workbench Play ignores mission headers), the game starts with
+//! the factions of the Contractors mission headers (RHS ION players against RHS AFRF, CIV civilians) through COE2's
+//! own default faction path, and the host becomes commander. So a hand test deploys at the base right away; the
+//! commander can still change the factions in the scenario attributes. Off for the test harness (-ctrTests), whose
+//! tests need the host character that COE2 replaces.
 modded class COE_GameMode
 {
 	protected static const int CTR_COMMANDER_RETRY_MS = 1000;
@@ -14,14 +15,14 @@ modded class COE_GameMode
 	{
 		if (Replication.IsServer() && !System.IsCLIParam(CTR_TestRunner.RUN_PARAM) && m_sDefaultPlayerFactionKey.IsEmpty())
 		{
-			m_sDefaultPlayerFactionKey = "US";
+			m_sDefaultPlayerFactionKey = CTR_Factions.PLAYER;
 			if (m_sDefaultEnemyFactionKey.IsEmpty())
-				m_sDefaultEnemyFactionKey = "USSR";
+				m_sDefaultEnemyFactionKey = CTR_Factions.ENEMY;
 
 			if (m_sDefaultCivilianFactionKey.IsEmpty())
-				m_sDefaultCivilianFactionKey = "CIV";
+				m_sDefaultCivilianFactionKey = CTR_Factions.CIVILIAN;
 
-			Print("[CTR] Workbench quick start: US against USSR; the host becomes commander");
+			Print(string.Format("[CTR] Workbench quick start: %1 against %2; the host becomes commander", CTR_Factions.PLAYER, CTR_Factions.ENEMY));
 			GetGame().GetCallqueue().CallLater(CTR_MakeHostCommander, CTR_COMMANDER_RETRY_MS, true);
 		}
 

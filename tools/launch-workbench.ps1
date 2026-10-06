@@ -4,7 +4,7 @@ Starts Arma Reforger Workbench with COE2_Contractors, without the launcher.
 
 .DESCRIPTION
 Opens addons/COE2_Contractors with these addon folders registered through -addonsDir: this repo's addons,
-the Marx addons (a sibling Marx checkout by default), the Workshop download folder (COE2, Kex Scenario Core,
+the Marx addons (a sibling Marx checkout by default), the Workshop download folder (COE2, Kex Scenario Core, RHS,
 ACE) and the game's addons folder. Workbench and the game are looked up in the Steam library folders listed
 in Steam's libraryfolders.vdf, unless given explicitly.
 

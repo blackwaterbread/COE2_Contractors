@@ -1,21 +1,43 @@
 COE_MainBaseEntity {
  ID "60A042236B7D1D24"
  {
-  GenericEntity : "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et" {
-   ID "6A8B084FBFAB7940"
-   components {
-    MRX_ShopComponent "{6A89197001F4D092}" {
-     m_sShopId "contractors"
-     m_sDisplayName "Contractor Supply"
-     m_sCatalog "{503CE5B0C4047B85}Configs/Contractors/Shop/CTR_ShopCatalog.conf"
-    }
-   }
-   coords -2.6 0 6.3
-  }
   GenericEntity : "{66BACE8BD545B8C2}Prefabs/Marx/Stash/MRX_StashWardrobe.et" {
    ID "6A8B084FBFAB789C"
    coords -0.4 0 6.6
    angles 0 180 0
+  }
+  GenericEntity : "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et" {
+   ID "6A8C44F89EDA6939"
+   components {
+    MRX_ShopComponent "{6A89197001F4D092}" {
+     m_sShopId "contractors_weapons"
+     m_sDisplayName "Contractor Armory"
+     m_sCatalog "{E78639FD8B162FF9}Configs/Contractors/Shop/CTR_ShopWeapons.conf"
+    }
+   }
+   coords -2.6 0 6.3
+  }
+  GenericEntity : "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et" {
+   ID "6A8C44F89EDA5133"
+   components {
+    MRX_ShopComponent "{6A89197001F4D092}" {
+     m_sShopId "contractors_gear"
+     m_sDisplayName "Contractor Outfitter"
+     m_sCatalog "{164B96404CBB390F}Configs/Contractors/Shop/CTR_ShopGear.conf"
+    }
+   }
+   coords 4.4 0 6.3
+  }
+  GenericEntity : "{10C12BB88B37C571}Prefabs/Marx/Shop/MRX_ShopTable.et" {
+   ID "6A8C44F89EDA588C"
+   components {
+    MRX_ShopComponent "{6A89197001F4D092}" {
+     m_sShopId "contractors_supplies"
+     m_sDisplayName "Contractor Supply"
+     m_sCatalog "{9AEAF5EF811BB9E9}Configs/Contractors/Shop/CTR_ShopSupplies.conf"
+    }
+   }
+   coords 6.8 0 6.3
   }
  }
 }

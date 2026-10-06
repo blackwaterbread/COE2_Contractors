@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{9AEAF5EF811BB9E9}Configs/Contractors/Shop/CTR_ShopSupplies.conf"
+ Configurations {
+  CONFResourceClass PC {
+  }
+  CONFResourceClass XBOX_ONE : PC {
+  }
+  CONFResourceClass XBOX_SERIES : PC {
+  }
+  CONFResourceClass PS4 : PC {
+  }
+  CONFResourceClass PS5 : PC {
+  }
+  CONFResourceClass HEADLESS : PC {
+  }
+ }
+}

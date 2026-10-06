@@ -97,23 +97,24 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		}
 
 		if (!player)
-			player = factionManager.GetFactionByKey("US");
+			player = factionManager.GetFactionByKey(CTR_Factions.PLAYER);
 
+		// The Contractors enemies, so the AO is built from RHS compositions.
 		Faction enemy = factionManager.GetEnemyFaction();
 		if (!enemy)
-		{
-			if (player && player.GetFactionKey() == "USSR")
-				enemy = factionManager.GetFactionByKey("US");
-			else
-				enemy = factionManager.GetFactionByKey("USSR");
-		}
+			enemy = factionManager.GetFactionByKey(CTR_Factions.ENEMY);
+
+		if (enemy == player)
+			enemy = factionManager.GetFactionByKey(CTR_Factions.PLAYER);
 
 		Faction civilian = factionManager.GetCivilianFaction();
 		if (!civilian)
-			civilian = factionManager.GetFactionByKey("CIV");
+			civilian = factionManager.GetFactionByKey(CTR_Factions.CIVILIAN);
 
 		factionManager.CTR_TestSetFactions(player, enemy, civilian);
 		Check(factionManager.GetPlayerFaction() && factionManager.GetEnemyFaction(), "factions set");
+		if (factionManager.GetEnemyFaction())
+			CheckString(factionManager.GetEnemyFaction().GetFactionKey(), CTR_Factions.ENEMY, "enemy faction");
 	}
 
 	//------------------------------------------------------------------------------------------------
