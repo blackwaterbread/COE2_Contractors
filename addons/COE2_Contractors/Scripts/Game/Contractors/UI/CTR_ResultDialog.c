@@ -158,7 +158,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			foreach (CTR_TaskOutcome task : m_Result.m_aTasks)
 			{
 				if (task.m_bCompleted)
-					AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount), COLOR_GAIN);
+					AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount, m_Result.m_sCurrency), COLOR_GAIN);
 			}
 
 			AddCountLine("Kills", stats.m_iKills, payout.m_iKills);
@@ -167,7 +167,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			AddCountLine("Deaths", stats.m_iDeaths, payout.m_iDeaths);
 		}
 
-		AddLine("Total", FormatAmount(payout.m_iTotal), GetAmountColor(payout.m_iTotal));
+		AddLine("Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
 		AddLine(GetPayStatusText(), GetBalanceText(), COLOR_MUTED);
 	}
 
@@ -177,7 +177,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (count == 0)
 			return;
 
-		AddLine(string.Format("%1 x%2", label, count), FormatAmount(amount), GetAmountColor(amount));
+		AddLine(string.Format("%1 x%2", label, count), FormatAmount(amount, m_Result.m_sCurrency), GetAmountColor(amount));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -291,12 +291,13 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static string FormatAmount(int amount)
+	//! Signed amount, e.g. "+$6,000" or "-$2,500".
+	static string FormatAmount(int amount, string currency)
 	{
 		if (amount > 0)
-			return "+" + MRX_TextFormat.Amount(amount);
+			return "+" + MRX_TextFormat.Money(amount, currency);
 
-		return MRX_TextFormat.Amount(amount);
+		return MRX_TextFormat.Money(amount, currency);
 	}
 
 	//------------------------------------------------------------------------------------------------

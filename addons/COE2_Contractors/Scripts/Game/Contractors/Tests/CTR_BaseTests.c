@@ -35,6 +35,9 @@ class CTR_Test_ShopPricing : CTR_TestCase
 		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et", SCR_EArsenalItemType.RIFLE, SCR_EArsenalItemMode.WEAPON, 8), 900, "M16A2 reference price");
 		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Weapons/Handguns/M9/Handgun_M9.et", SCR_EArsenalItemType.PISTOL, SCR_EArsenalItemMode.WEAPON, 5), 700, "pistol reference price");
 		CheckInt(CTR_ShopPricing.GetPrice("Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et", SCR_EArsenalItemType.HEAL, SCR_EArsenalItemMode.CONSUMABLE, 0), 8, "field dressing");
+		ResourceName epinephrine = "Prefabs/Items/Medicine/EpinephrineInjection/ACE_Medical_EpinephrineInjection.et";
+		CheckString(CTR_ShopPricing.GetCategory(epinephrine, SCR_EArsenalItemType.HEAL, SCR_EArsenalItemMode.CONSUMABLE), CTR_ShopPricing.CATEGORY_MEDICAL, "ACE epinephrine category");
+		CheckInt(CTR_ShopPricing.GetPrice(epinephrine, SCR_EArsenalItemType.HEAL, SCR_EArsenalItemMode.CONSUMABLE, 3), 100, "ACE epinephrine price");
 
 		// RHS rifles keep the default type and some the default mode.
 		ResourceName rhsRifle = "Prefabs/Weapons/Rifles/M4A1/Rifle_M4A1_BLOCK_1.et";
@@ -183,6 +186,8 @@ class CTR_Test_BaseSetup : CTR_TestCase
 			else if (shopId == CTR_ShopPricing.SHOP_SUPPLIES)
 			{
 				Check(definition.m_Catalog.FindItem("fielddressing_us_01") != null, "field dressing for sale");
+				Check(definition.m_Catalog.FindItem("ace_medical_epinephrineinjection") != null, "ACE epinephrine for sale");
+				Check(definition.m_Catalog.FindItem("ace_medical_naloxoneinjection") != null, "ACE Circulation naloxone for sale");
 			}
 		}
 

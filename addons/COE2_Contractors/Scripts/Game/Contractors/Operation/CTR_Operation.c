@@ -10,7 +10,8 @@ class CTR_Participant : Managed
 
 //------------------------------------------------------------------------------------------------
 //! An operation from AO generation until its tasks are finished or it is cancelled (server).
-//! Tracks who enters an AO and counts the vanilla data collector stats that players gain meanwhile.
+//! Tracks who enters an AO and counts the vanilla data collector stats that players gain meanwhile, plus treatments
+//! of others with medical items the data collector does not list (ACE drugs).
 class CTR_Operation : Managed
 {
 	protected static const int TRACK_INTERVAL_MS = 2000;
@@ -63,6 +64,7 @@ class CTR_Operation : Managed
 		SCR_DataCollectorComponent collector = GetGame().GetDataCollector();
 		m_bCountTemporaryStats = collector && collector.FindModule(SCR_DataCollectorCrimesModule) != null;
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatAdded);
+		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Insert(OnUnlistedTreatment);
 		GetGame().GetCallqueue().CallLater(Track, TRACK_INTERVAL_MS, true);
 		Track();
 	}
@@ -84,6 +86,7 @@ class CTR_Operation : Managed
 	protected void StopTracking()
 	{
 		SCR_PlayerData.s_OnStatAdded.Remove(OnStatAdded);
+		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Remove(OnUnlistedTreatment);
 		GetGame().GetCallqueue().Remove(Track);
 	}
 
@@ -170,6 +173,15 @@ class CTR_Operation : Managed
 
 		CTR_Participant participant = GetOrAddParticipant(playerId, System.GetUnixTime());
 		AddStat(participant.m_Stats, stat, amount);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnUnlistedTreatment(int playerId)
+	{
+		if (m_bClosed)
+			return;
+
+		GetOrAddParticipant(playerId, System.GetUnixTime()).m_Stats.m_iHeals++;
 	}
 
 	//------------------------------------------------------------------------------------------------

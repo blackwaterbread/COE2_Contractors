@@ -480,7 +480,12 @@ class CTR_ShopPricing
 			new CTR_PriceRule("tourniquet", 40),
 			new CTR_PriceRule("salinebag", 15),
 			new CTR_PriceRule("morphine", 30),
-			new CTR_PriceRule("medicalkit", 500)
+			new CTR_PriceRule("medicalkit", 500),
+			new CTR_PriceRule("epinephrine", 100),
+			new CTR_PriceRule("naloxone", 50),
+			new CTR_PriceRule("phenylephrine", 30),
+			new CTR_PriceRule("metoprolol", 20),
+			new CTR_PriceRule("ammoniumcarbonate", 5)
 		};
 		rules.Insert(CATEGORY_MEDICAL, rulesMedical);
 

@@ -10,6 +10,7 @@ class CTR_PayoutTests
 		runner.Add(new CTR_Test_TaskPricing());
 		runner.Add(new CTR_Test_PayoutRules());
 		runner.Add(new CTR_Test_StatMapping());
+		runner.Add(new CTR_Test_UnlistedTreatment());
 		runner.Add(new CTR_Test_SettlementPaysOnce());
 		runner.Add(new CTR_Test_ResultJson());
 	}
@@ -151,6 +152,33 @@ class CTR_Test_StatMapping : CTR_TestCase
 		CheckInt(stats.m_iShots, 30, "shots");
 		CheckInt(stats.m_iHeals, 2, "heals of others only");
 		CheckInt(Math.Round(stats.m_fDistance), 200, "distance");
+		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Treatments with medical items the data collector does not list (ACE drugs) count as heals while the operation runs.
+class CTR_Test_UnlistedTreatment : CTR_TestCase
+{
+	protected static const int PLAYER_ID = 77;
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		CTR_Operation operation = new CTR_Operation("test-treatment");
+		operation.StartTracking();
+		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
+		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
+		CTR_Participant participant = operation.GetParticipants().Get(PLAYER_ID);
+		Check(participant != null, "treating player becomes a participant");
+		if (participant)
+			CheckInt(participant.m_Stats.m_iHeals, 2, "two treatments");
+
+		operation.Close();
+		SCR_DataCollectorHealingItemsModule.CTR_GetOnUnlistedTreatment().Invoke(PLAYER_ID);
+		if (participant)
+			CheckInt(participant.m_Stats.m_iHeals, 2, "no counting after the operation closed");
+
 		Finish();
 	}
 }

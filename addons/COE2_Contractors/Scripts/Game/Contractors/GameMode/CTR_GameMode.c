@@ -10,6 +10,16 @@ modded class COE_GameMode
 	//! Vehicles carrying players during the return (weak: engine entities).
 	protected ref array<IEntity> m_aCTR_ReturningVehicles = {};
 
+	//! How the pay currency is shown on every machine; storage and the ledger keep the Marx currency ID.
+	protected static const string CTR_CURRENCY_FORMAT = "$%1";
+
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+		MRX_TextFormat.SetCurrencyFormat(CTR_Settings.Get().m_sCurrency, CTR_CURRENCY_FORMAT);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected void OnGameStart()
 	{
