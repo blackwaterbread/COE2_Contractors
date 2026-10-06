@@ -8,7 +8,6 @@ COE_MainBaseEntity {
      m_sShopId "contractors"
      m_sDisplayName "Contractor Supply"
      m_sCatalog "{503CE5B0C4047B85}Configs/Contractors/Shop/CTR_ShopCatalog.conf"
-     m_bAllowSell 0
     }
    }
    coords -2.6 0 6.3

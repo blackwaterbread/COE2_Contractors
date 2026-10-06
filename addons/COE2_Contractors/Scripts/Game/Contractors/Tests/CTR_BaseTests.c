@@ -103,7 +103,8 @@ class CTR_Test_BaseSetup : CTR_TestCase
 			if (definition)
 			{
 				Check(definition.m_Catalog.m_aItems.Count() > 300, "all-faction catalog, items: " + definition.m_Catalog.m_aItems.Count());
-				Check(!definition.m_bAllowSell, "no buying back");
+				Check(definition.m_bAllowSell, "buys items back");
+				CheckInt(definition.m_iSellPercent, MRX_ShopDefinition.DEFAULT_SELL_PERCENT, "buy-back percentage");
 				MRX_ShopItem rifle = definition.m_Catalog.FindItem("rifle_m16a2");
 				Check(rifle && rifle.m_iPrice == 520, "M16A2 for sale at 520");
 				Check(definition.m_Catalog.FindItem("rifle_ak74") != null, "USSR rifle for sale");

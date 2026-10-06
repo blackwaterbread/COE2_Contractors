@@ -279,14 +279,13 @@ class CTR_Test_OperationFlow : CTR_TestCase
 }
 //------------------------------------------------------------------------------------------------
 //! Like the operation flow, but the host drives a vehicle in the AO and another vehicle stays empty there:
-//! the driven vehicle returns to the base with the host inside, the empty one stays, and neither is deleted.
+//! the driven vehicle returns to the base with the host inside and is kept, the empty one is deleted as in COE2.
 class CTR_Test_VehicleReturn : CTR_Test_OperationFlow
 {
 	protected static const ResourceName VEHICLE = "{259EE7B78C51B624}Prefabs/Vehicles/Wheeled/UAZ469/UAZ469.et";
 
 	protected IEntity m_Driven;
 	protected IEntity m_LeftBehind;
-	protected vector m_vLeftBehindPos;
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnEnteredAO(vector pos)
@@ -294,8 +293,6 @@ class CTR_Test_VehicleReturn : CTR_Test_OperationFlow
 		m_Driven = KSC_GameTools.SpawnVehiclePrefab(VEHICLE, pos + Vector(0, 0, 8), 0);
 		m_LeftBehind = KSC_GameTools.SpawnVehiclePrefab(VEHICLE, pos + Vector(0, 0, -20), 0);
 		Check(m_Driven && m_LeftBehind, "vehicles spawned");
-		if (m_LeftBehind)
-			m_vLeftBehindPos = m_LeftBehind.GetOrigin();
 
 		GetGame().GetCallqueue().CallLater(Board, 1500);
 	}
@@ -323,20 +320,14 @@ class CTR_Test_VehicleReturn : CTR_Test_OperationFlow
 	override protected void CheckReturnedHost()
 	{
 		Check(m_Driven != null, "driven vehicle not deleted");
-		Check(m_LeftBehind != null, "vehicle left in the AO not deleted");
+		Check(m_LeftBehind == null, "vehicle left in the AO deleted the COE2 way");
 		if (m_Driven)
 			Check(vector.DistanceXZ(m_Driven.GetOrigin(), m_GameMode.GetMainBasePos()) < 120, "driven vehicle at the base");
-
-		if (m_LeftBehind)
-			Check(vector.DistanceXZ(m_LeftBehind.GetOrigin(), m_vLeftBehindPos) < 5, "vehicle left in the AO stays there");
 
 		SCR_ChimeraCharacter character = GetCharacter();
 		Check(character && character.IsInVehicle(), "host still in the vehicle");
 		if (character && m_Driven)
 			Check(vector.DistanceXZ(character.GetOrigin(), m_Driven.GetOrigin()) < 10, "host came along with the vehicle");
-
-		// Leave the world clean for the next run.
-		SCR_EntityHelper.DeleteEntityAndChildren(m_LeftBehind);
 	}
 }
 

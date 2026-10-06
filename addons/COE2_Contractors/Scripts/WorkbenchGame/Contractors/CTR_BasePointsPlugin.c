@@ -66,7 +66,6 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 			"     m_sShopId \"contractors\"",
 			"     m_sDisplayName \"Contractor Supply\"",
 			"     m_sCatalog \"" + SHOP_CATALOG + "\"",
-			"     m_bAllowSell 0",
 			"    }",
 			"   }",
 			"   coords -2.6 0 6.3",

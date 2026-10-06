@@ -9,16 +9,13 @@ class CTR_ReturnTrip
 	protected static const float PARKING_HEIGHT = 4;
 
 	//------------------------------------------------------------------------------------------------
-	//! \return Number of vehicles moved.
-	static int MoveOccupiedVehicles(vector basePos)
+	//! Moves the vehicles that are not at the base yet. \return Number of vehicles moved.
+	static int MoveVehicles(notnull array<IEntity> vehicles, vector basePos)
 	{
-		array<IEntity> vehicles = {};
-		CollectOccupiedVehicles(vehicles);
-
 		int moved;
 		foreach (IEntity vehicle : vehicles)
 		{
-			if (vector.DistanceXZ(vehicle.GetOrigin(), basePos) < AT_BASE_DISTANCE)
+			if (!vehicle || vector.DistanceXZ(vehicle.GetOrigin(), basePos) < AT_BASE_DISTANCE)
 				continue;
 
 			if (MoveVehicle(vehicle, basePos))

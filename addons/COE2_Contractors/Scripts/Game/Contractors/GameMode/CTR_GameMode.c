@@ -5,8 +5,10 @@ modded class COE_GameMode
 {
 	protected ref CTR_Operation m_CTR_Operation;
 	protected ref CTR_Settlement m_CTR_Settlement;
-	//! Set while the return to base ends the AO: players in vehicles ride along and vehicles are kept.
+	//! Set while the return to base ends the AO: players in vehicles ride along and their vehicles are kept.
 	protected bool m_bCTR_Returning;
+	//! Vehicles carrying players during the return (weak: engine entities).
+	protected ref array<IEntity> m_aCTR_ReturningVehicles = {};
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnGameStart()
@@ -202,7 +204,8 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Ends the AO the way COE2 does after exfil, but vehicles with players come along and no vehicle is deleted.
+	//! Ends the AO the way COE2 does after exfil, but vehicles carrying players come along with their crew and are kept;
+	//! every other vehicle is cleaned up as in COE2.
 	protected void CTR_ReturnToBase(string operationId)
 	{
 		// The commander may have ended the AO or started the next one meanwhile.
@@ -210,25 +213,26 @@ modded class COE_GameMode
 			return;
 
 		m_bCTR_Returning = true;
-		int moved = CTR_ReturnTrip.MoveOccupiedVehicles(m_vMainBasePos);
+		m_aCTR_ReturningVehicles.Clear();
+		CTR_ReturnTrip.CollectOccupiedVehicles(m_aCTR_ReturningVehicles);
+		int moved = CTR_ReturnTrip.MoveVehicles(m_aCTR_ReturningVehicles, m_vMainBasePos);
 		ExecuteCommanderRequest(COE_ECommanderRequest.CANCEL_AO);
 		m_bCTR_Returning = false;
+		m_aCTR_ReturningVehicles.Clear();
 		Print(string.Format("[CTR] Operation %1: returned to base, %2 vehicles moved", operationId, moved));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! On the return to base, vehicles stay: those that came along and those left in the AO.
+	//! On the return to base, vehicles carrying players stay; COE2 deletes the others.
 	override void CollectBuiltEntitiesForCleanUp()
 	{
 		super.CollectBuiltEntitiesForCleanUp();
 		if (!m_bCTR_Returning)
 			return;
 
-		for (int i = m_aEntitiesToDelete.Count() - 1; i >= 0; i--)
+		foreach (IEntity vehicle : m_aCTR_ReturningVehicles)
 		{
-			IEntity entity = m_aEntitiesToDelete[i];
-			if (entity && entity.FindComponent(SCR_EditableVehicleComponent))
-				m_aEntitiesToDelete.Remove(i);
+			m_aEntitiesToDelete.RemoveItem(vehicle);
 		}
 	}
 }
