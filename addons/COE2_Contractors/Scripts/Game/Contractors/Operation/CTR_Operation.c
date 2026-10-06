@@ -6,8 +6,8 @@ class CTR_Participant : Managed
 	ref CTR_PlayerStats m_Stats = new CTR_PlayerStats();
 	int m_iFirstSeen;
 	int m_iLastSeen;
-	//! Time spent on CPR of players in cardiac arrest; every full reward interval counts as a treatment.
-	float m_fCprSeconds;
+	//! Seconds of CPR by patient player ID; every full reward interval counts as a treatment, up to a cap per patient.
+	ref map<int, float> m_mCprSeconds = new map<int, float>();
 }
 
 //------------------------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ class CTR_Operation : Managed
 	//! Updates owner, name and time of connected players, marks those inside an AO and adds CPR time.
 	protected void Track()
 	{
-		int cprInterval = CTR_Settings.Get().m_iCprRewardSeconds;
+		CTR_Settings settings = CTR_Settings.Get();
 		COE_GameMode gameMode = COE_GameMode.GetInstance();
 		if (!gameMode)
 			return;
@@ -143,8 +143,9 @@ class CTR_Operation : Managed
 			if (!character || character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
 				continue;
 
-			if (IsDoingCprOnPlayer(character))
-				AddCprSeconds(participant, TRACK_INTERVAL_MS * 0.001, cprInterval);
+			int patientId = GetCprPatient(character);
+			if (patientId > 0)
+				AddCprSeconds(participant, patientId, TRACK_INTERVAL_MS * 0.001, settings.m_iCprRewardSeconds, settings.m_iCprMaxSecondsPerPatient);
 
 			if (!participant.m_Stats.m_bEnteredAO && IsInAnyAO(character.GetOrigin(), aos, radius))
 				participant.m_Stats.m_bEnteredAO = true;
@@ -152,44 +153,47 @@ class CTR_Operation : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! eturn True while the character does CPR (ACE Medical Circulation) on another player whose heart stopped.
-	//! CPR on someone who does not need it, or on AI, pays nothing.
-	static bool IsDoingCprOnPlayer(notnull SCR_ChimeraCharacter character)
+	//! eturn Player ID of the patient while the character does CPR (ACE Medical Circulation) on another player whose
+	//! heart stopped, else 0. CPR on someone who does not need it, or on AI, pays nothing.
+	static int GetCprPatient(notnull SCR_ChimeraCharacter character)
 	{
 		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
 		if (!access)
-			return false;
+			return 0;
 
 		BaseCompartmentSlot slot = access.GetCompartment();
 		if (!slot)
-			return false;
+			return 0;
 
 		ACE_Medical_CPRHelperCompartment helper = ACE_Medical_CPRHelperCompartment.Cast(slot.GetOwner());
 		if (!helper)
-			return false;
+			return 0;
 
 		ACE_Medical_VitalsComponent vitals = helper.CTR_GetPatientVitals();
-		if (!vitals)
-			return false;
+		if (!vitals || !(vitals.GetVitalStateID() & (ACE_Medical_EVitalStateID.CARDIAC_ARREST | ACE_Medical_EVitalStateID.RESUSCITATION)))
+			return 0;
 
 		IEntity patient = vitals.GetOwner();
-		if (!patient || patient == character || GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(patient) <= 0)
-			return false;
+		if (!patient || patient == character)
+			return 0;
 
-		return (vitals.GetVitalStateID() & (ACE_Medical_EVitalStateID.CARDIAC_ARREST | ACE_Medical_EVitalStateID.RESUSCITATION)) != 0;
+		return GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(patient);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Adds CPR time; each full interval of it counts as one treatment.
-	static void AddCprSeconds(notnull CTR_Participant participant, float seconds, int interval)
+	//! Adds CPR time on a patient; each full interval counts as one treatment, up to maxSeconds per patient. The cap
+	//! keeps CPR on someone who cannot be revived (too much blood lost) from paying forever.
+	static void AddCprSeconds(notnull CTR_Participant participant, int patientId, float seconds, int interval, int maxSeconds)
 	{
 		if (interval <= 0)
 			return;
 
-		int before = Math.Floor(participant.m_fCprSeconds / interval);
-		participant.m_fCprSeconds += seconds;
-		int after = Math.Floor(participant.m_fCprSeconds / interval);
-		participant.m_Stats.m_iHeals += after - before;
+		float previous = participant.m_mCprSeconds.Get(patientId);
+		float total = Math.Min(previous + seconds, maxSeconds);
+		participant.m_mCprSeconds.Set(patientId, total);
+		int before = Math.Floor(previous / interval);
+		int after = Math.Floor(total / interval);
+		participant.m_Stats.m_iHeals += Math.Max(0, after - before);
 	}
 
 	//------------------------------------------------------------------------------------------------

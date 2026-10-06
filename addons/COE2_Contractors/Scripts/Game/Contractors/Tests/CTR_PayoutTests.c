@@ -157,21 +157,27 @@ class CTR_Test_StatMapping : CTR_TestCase
 }
 
 //------------------------------------------------------------------------------------------------
-//! Every full interval of CPR counts as one treatment, also when the time comes in pieces.
+//! Every full interval of CPR counts as one treatment, also when the time comes in pieces, up to a cap per patient.
 class CTR_Test_CprTime : CTR_TestCase
 {
 	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
 		CTR_Participant participant = new CTR_Participant();
-		CTR_Operation.AddCprSeconds(participant, 14, 15);
+		CTR_Operation.AddCprSeconds(participant, 7, 14, 15, 120);
 		CheckInt(participant.m_Stats.m_iHeals, 0, "less than one interval");
-		CTR_Operation.AddCprSeconds(participant, 2, 15);
+		CTR_Operation.AddCprSeconds(participant, 7, 2, 15, 120);
 		CheckInt(participant.m_Stats.m_iHeals, 1, "first interval complete");
-		CTR_Operation.AddCprSeconds(participant, 30, 15);
+		CTR_Operation.AddCprSeconds(participant, 7, 30, 15, 120);
 		CheckInt(participant.m_Stats.m_iHeals, 3, "two more intervals");
-		CTR_Operation.AddCprSeconds(participant, 2, 0);
-		CheckInt(participant.m_Stats.m_iHeals, 3, "no interval configured");
+		CTR_Operation.AddCprSeconds(participant, 7, 300, 15, 120);
+		CheckInt(participant.m_Stats.m_iHeals, 8, "capped at two minutes per patient");
+		CTR_Operation.AddCprSeconds(participant, 7, 60, 15, 120);
+		CheckInt(participant.m_Stats.m_iHeals, 8, "nothing more for that patient");
+		CTR_Operation.AddCprSeconds(participant, 9, 30, 15, 120);
+		CheckInt(participant.m_Stats.m_iHeals, 10, "another patient pays again");
+		CTR_Operation.AddCprSeconds(participant, 9, 30, 0, 120);
+		CheckInt(participant.m_Stats.m_iHeals, 10, "no interval configured");
 		Finish();
 	}
 }

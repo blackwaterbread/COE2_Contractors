@@ -63,6 +63,9 @@ class CTR_Settings
 	[Attribute("15", desc: "Seconds of CPR (ACE Medical Circulation) that count as one treatment", params: "1 120")]
 	int m_iCprRewardSeconds;
 
+	[Attribute("120", desc: "Most seconds of CPR on one patient that pay in an operation (ACE revives in about a minute when the patient has enough blood)", params: "0 600")]
+	int m_iCprMaxSecondsPerPatient;
+
 	[Attribute("10", desc: "Seconds between the result screen and the return to base", params: "0 120")]
 	int m_iReturnDelaySeconds;
 
@@ -99,6 +102,7 @@ class CTR_Settings
 		settings.m_iDeathPenalty = 2500;
 		settings.m_iFriendlyHealReward = 300;
 		settings.m_iCprRewardSeconds = 15;
+		settings.m_iCprMaxSecondsPerPatient = 120;
 		settings.m_iReturnDelaySeconds = 10;
 		settings.m_aTaskRewards = {
 			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),
