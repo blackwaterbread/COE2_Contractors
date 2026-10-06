@@ -48,8 +48,10 @@ class CTR_StarterKit
 			storage.GetOwnedItems(items, false);
 			foreach (InventoryItemComponent item : items)
 			{
-				if (item.GetOwner())
-					manager.TryDeleteItem(item.GetOwner());
+				// The role's current weapon cannot be removed through the inventory: delete it directly.
+				IEntity owner = item.GetOwner();
+				if (owner && !manager.TryDeleteItem(owner))
+					RplComponent.DeleteRplEntity(owner, false);
 			}
 		}
 

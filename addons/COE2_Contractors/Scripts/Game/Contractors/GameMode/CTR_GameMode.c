@@ -34,12 +34,17 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Every role respawns with the same minimal kit (not when the Game Master possesses a character).
-	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	//! Every role respawns with the same minimal kit (not when the Game Master possesses a character). Applied before
+	//! the player takes control: replacing the role's weapon later leaves the character with nothing in hand.
+	override bool PreparePlayerEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
-		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
+		if (!super.PreparePlayerEntity_S(requestComponent, handlerComponent, data, entity))
+			return false;
+
 		if (entity && !SCR_PossessSpawnData.Cast(data))
 			CTR_StarterKit.Apply(entity, CTR_Settings.Get().GetStarterKit());
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
