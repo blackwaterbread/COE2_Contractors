@@ -12,7 +12,7 @@ COE2: Contractors is an unofficial variant of Kexanone's COE2 (co-op dynamic ope
 |---|---|---|
 | COE2 (Kexanone, APL-SA) | `60926835F4A7B0CA` | Brings Kex Scenario Core `5ED61DC0AFE17E8E`, ACE Core Dev, ACE Captives Dev. Source: https://github.com/Kexanone/COE2_AR |
 | Marx_Core | `6A885105A7EC72B9` | Services, models, storage, public API |
-| Marx_UI | `6A8A0C05BCEEF932` | Dialog base, wallet HUD |
+| Marx_UI | `6A8A0C05BCEEF932` | Dialog base, balance panel in the inventory |
 | Marx_Shop | `6A885683BA928BB5` | Shop logic, prefabs, shop UI |
 | Marx_Stash | `6A8A0C37A19F762B` | Stash point, stash UI |
 | RHS - Status Quo | `595F2BF2F44836FB` | Brings RHS Content Pack 01 `1337C0DE5DABBEEF` and 02 `BADC0DEDABBEDA5E`. Default factions (ION against AFRF) and most shop items |
