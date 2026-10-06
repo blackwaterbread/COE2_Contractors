@@ -7,6 +7,8 @@ class CTR_ShopPricing
 {
 	static const string SHOP_WEAPONS = "contractors_weapons";
 	static const string SHOP_EQUIPMENT = "contractors_equipment";
+	//! The quartermaster at the base: stash pages and other services (products, not items).
+	static const string SHOP_SERVICES = "contractors_services";
 	//! Price of the attachments mounted on a weapon variant, per supply cost point above the bare weapon.
 	static const int VARIANT_PRICE_PER_SUPPLY = 80;
 

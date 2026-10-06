@@ -33,6 +33,8 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	protected static const int CONTENTS_COLUMN_CONTENTS = 11;
 
 	static const int STARTING_CASH = 5000;
+	//! A full stash of 8 pages holds up to 384 one-cell items.
+	static const int MAX_STASH_ASSETS = 400;
 
 	//! Keeps created container resources alive until the plugin finishes.
 	protected ref array<ref Resource> m_aHolders = {};
@@ -44,6 +46,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		Print(TAG + "start");
 		CreatePaySettings();
 		CreateShopCatalogs();
+		CreateServicesCatalog();
 		ResourceName persistence = CreatePersistenceConfig();
 		ResourceName settings = CreateMarxSettings();
 		if (persistence.IsEmpty() || settings.IsEmpty())
@@ -81,7 +84,35 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		if (shopId == CTR_ShopPricing.SHOP_WEAPONS)
 			return SHOP_DIR + "CTR_ShopWeapons.conf";
 
+		if (shopId == CTR_ShopPricing.SHOP_SERVICES)
+			return SHOP_DIR + "CTR_ShopServices.conf";
+
 		return SHOP_DIR + "CTR_ShopEquipment.conf";
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Catalog of the quartermaster: stash pages for $1,000,000 each, up to 8 pages. Not rewritten once it exists.
+	protected ResourceName CreateServicesCatalog()
+	{
+		CTR_StashPageProduct product = new CTR_StashPageProduct();
+		product.m_iMaxPages = 8;
+		MRX_ShopItem item = MRX_ShopItem.Create("stash_page", "{06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et", 1000000, CTR_Settings.Get().m_sCurrency, 0);
+		item.m_sName = "Stash Expansion";
+		item.m_sCategory = "Stash";
+		item.m_sDescription = "One more page of 6 x 8 cells in your stash, up to 8 pages";
+		item.m_Product = product;
+
+		MRX_ShopCatalog catalog = new MRX_ShopCatalog();
+		catalog.m_aItems = {item};
+		Resource holder = BaseContainerTools.CreateContainerFromInstance(catalog);
+		if (!holder || !holder.IsValid())
+		{
+			Print(TAG + "CreateContainerFromInstance failed: services catalog", LogLevel.ERROR);
+			return ResourceName.Empty;
+		}
+
+		m_aHolders.Insert(holder);
+		return SaveAndRegister(holder.GetResource().ToBaseContainer(), GetShopCatalogFile(CTR_ShopPricing.SHOP_SERVICES));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -388,6 +419,7 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		Log("cash.m_sId", cash.Set("m_sId", MRX_Settings.DEFAULT_CURRENCY));
 		Log("cash.m_iInitialBalance", cash.Set("m_iInitialBalance", STARTING_CASH));
 		Log("m_aCurrencies", root.SetObjectArray("m_aCurrencies").Insert(cash));
+		Log("m_iMaxStashAssets", root.Set("m_iMaxStashAssets", MAX_STASH_ASSETS));
 
 		return SaveAndRegister(root, MARX_SETTINGS_FILE);
 	}

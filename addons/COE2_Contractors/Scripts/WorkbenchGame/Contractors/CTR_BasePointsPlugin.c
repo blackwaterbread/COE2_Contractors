@@ -1,9 +1,10 @@
 // Development tool: turns the two FIA arsenal boxes of the COE2 main base prefab used by the COE2 worlds
 // (COE_Hideout_01.et) into the Contractors arsenal shops, named and marked like the vanilla weapons and equipment
-// arsenal boxes, and puts the stash point next to them. The override file
-// itself is created in Workbench ("Override in" COE2_Contractors); this adds the lines by a text edit, with entity and
-// component IDs from Workbench.GenerateGloballyUniqueID64(). Only adds what is missing: arsenal shops by shop ID, the
-// stash point by prefab. Run "Create Contractors Configs" first, it creates the shop catalogs.
+// arsenal boxes, and puts the stash point and the quartermaster (a shop keeper selling stash pages, prefab created here
+// once) next to them. The override file itself is created in Workbench ("Override in" COE2_Contractors); this adds the
+// lines by a text edit, with entity and component IDs from Workbench.GenerateGloballyUniqueID64(). Only adds what is
+// missing: arsenal shops by shop ID, the stash point and the quartermaster by prefab. Run "Create Contractors Configs"
+// first, it creates the shop catalogs.
 
 [WorkbenchPluginAttribute(name: "Add Contractors Base Points", category: "Contractors", wbModules: { "WorldEditor" })]
 class CTR_BasePointsPlugin : WorldEditorPlugin
@@ -11,6 +12,10 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 	static const string TAG = "[CTR_PLUGIN] ";
 	static const string BASE_FILE = "$COE2_Contractors:Prefabs/Compositions/Misc/COE/COE_Hideout_01.et";
 	static const ResourceName STASH_PREFAB = "{66BACE8BD545B8C2}Prefabs/Marx/Stash/MRX_StashWardrobe.et";
+	static const string QUARTERMASTER_FILE = "$COE2_Contractors:Prefabs/Contractors/CTR_Quartermaster.et";
+	static const ResourceName QUARTERMASTER_BASE = "{DE15FB5FAFC3E63F}Prefabs/Characters/Factions/BLUFOR/US_Army/Character_US_Officer.et";
+	//! Next to the stash wardrobe, along the same wall, facing into the hall.
+	static const string QUARTERMASTER_POSITION = "2.4 0 6.1";
 	//! Entity IDs of the FIA arsenal boxes in COE_Hideout_01.et (inherited children of the override).
 	static const string WEAPONS_BOX_ID = "60A042236B427BA4";
 	static const string EQUIPMENT_BOX_ID = "61288E8539ECF97D";
@@ -89,9 +94,19 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 			children.Insert("  }");
 		}
 
+		ResourceName quartermaster = CreateQuartermasterPrefab();
+		if (!quartermaster.IsEmpty() && !text.Contains(SCR_ResourceNameUtils.GetPrefabGUID(quartermaster)))
+		{
+			children.Insert("  SCR_ChimeraCharacter : \"" + quartermaster + "\" {");
+			children.Insert("   ID \"" + NewEntityId() + "\"");
+			children.Insert("   coords " + QUARTERMASTER_POSITION);
+			children.Insert("   angles 0 180 0");
+			children.Insert("  }");
+		}
+
 		if (children.IsEmpty())
 		{
-			Print(TAG + "base override already has the arsenal shops and the stash point, not changed");
+			Print(TAG + "base override already has the arsenal shops, the stash point and the quartermaster, not changed");
 			return;
 		}
 
@@ -178,6 +193,97 @@ class CTR_BasePointsPlugin : WorldEditorPlugin
 		children.Insert("   }");
 		children.Insert("  }");
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The quartermaster prefab: the vanilla US officer as a shop keeper without AI that sells the services catalog
+	//! (stash pages) in the shop window. Created once.
+	//! \return Its resource name, empty when it cannot be created.
+	protected ResourceName CreateQuartermasterPrefab()
+	{
+		string absPath;
+		Workbench.GetAbsolutePath(QUARTERMASTER_FILE, absPath, false);
+		if (FileIO.FileExists(absPath))
+			return GetResourceName(absPath);
+
+		string catalogPath;
+		Workbench.GetAbsolutePath(CTR_ConfigsPlugin.GetShopCatalogFile(CTR_ShopPricing.SHOP_SERVICES), catalogPath, false);
+		ResourceName catalog = GetResourceName(catalogPath);
+		if (catalog.IsEmpty())
+		{
+			Print(TAG + "no services catalog (run Create Contractors Configs first), no quartermaster", LogLevel.ERROR);
+			return ResourceName.Empty;
+		}
+
+		WorldEditorAPI api = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!api || !api.GetWorld())
+		{
+			Print(TAG + "open a world first, no quartermaster", LogLevel.ERROR);
+			return ResourceName.Empty;
+		}
+
+		FileIO.MakeDirectory(FilePath.StripFileName(absPath));
+		bool manageAction = !api.IsDoingEditAction();
+		if (manageAction)
+			api.BeginEntityAction("Contractors quartermaster");
+
+		IEntitySource source = api.CreateEntity(QUARTERMASTER_BASE, string.Empty, api.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+		if (!source)
+		{
+			Print(TAG + "CreateEntity failed: " + QUARTERMASTER_BASE, LogLevel.ERROR);
+			if (manageAction)
+				api.EndEntityAction();
+
+			return ResourceName.Empty;
+		}
+
+		source.ClearVariable("coords");
+		array<ref ContainerIdPathEntry> shopPath = { new ContainerIdPathEntry("MRX_ShopComponent") };
+		Log("MRX_ShopComponent", api.CreateComponent(source, "MRX_ShopComponent") != null);
+		Log("m_sShopId", api.SetVariableValue(source, shopPath, "m_sShopId", CTR_ShopPricing.SHOP_SERVICES));
+		Log("m_sDisplayName", api.SetVariableValue(source, shopPath, "m_sDisplayName", "Quartermaster"));
+		Log("m_sCatalog", api.SetVariableValue(source, shopPath, "m_sCatalog", catalog));
+		Log("m_bAllowSell", api.SetVariableValue(source, shopPath, "m_bAllowSell", "0"));
+		Log("m_fMaxDistance", api.SetVariableValue(source, shopPath, "m_fMaxDistance", "3"));
+		Log("MRX_ShopKeeperComponent", api.CreateComponent(source, "MRX_ShopKeeperComponent") != null);
+
+		// The character's own "default" action context (on the chest) gets the trade action.
+		array<ref ContainerIdPathEntry> actionsPath = { new ContainerIdPathEntry("ActionsManagerComponent") };
+		Log("additionalActions", api.CreateObjectArrayVariableMember(source, actionsPath, "additionalActions", "MRX_OpenShopAction", 0));
+		array<ref ContainerIdPathEntry> actionPath = { new ContainerIdPathEntry("ActionsManagerComponent"), new ContainerIdPathEntry("additionalActions", 0) };
+		Log("ParentContextList", api.SetVariableValue(source, actionPath, "ParentContextList", "default"));
+		Log("UIInfo", api.CreateObjectVariableMember(source, actionPath, "UIInfo", "UIInfo"));
+		array<ref ContainerIdPathEntry> uiInfoPath = { new ContainerIdPathEntry("ActionsManagerComponent"), new ContainerIdPathEntry("additionalActions", 0), new ContainerIdPathEntry("UIInfo") };
+		Log("UIInfo.Name", api.SetVariableValue(source, uiInfoPath, "Name", "Talk to the Quartermaster"));
+
+		Log("CreateEntityTemplate", api.CreateEntityTemplate(source, absPath));
+		api.DeleteEntity(source);
+		if (manageAction)
+			api.EndEntityAction();
+
+		ResourceName resourceName = GetResourceName(absPath);
+		Print(TAG + "saved " + resourceName);
+		return resourceName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ResourceName GetResourceName(string absPath)
+	{
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		MetaFile meta = resourceManager.GetMetaFile(absPath);
+		if (!meta)
+			return ResourceName.Empty;
+
+		return meta.GetResourceID();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Log(string step, bool result)
+	{
+		if (result)
+			Print(TAG + step + " ok");
+		else
+			Print(TAG + step + " FAILED", LogLevel.ERROR);
 	}
 
 	//------------------------------------------------------------------------------------------------

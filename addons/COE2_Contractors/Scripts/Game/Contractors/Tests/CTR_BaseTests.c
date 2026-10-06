@@ -169,8 +169,10 @@ class CTR_Test_BaseSetup : CTR_TestCase
 		int stashPoints;
 		foreach (IEntity entity : m_aNearby)
 		{
-			if (entity.FindComponent(MRX_ShopComponent))
-				Check(MRX_ArsenalShopComponent.Find(entity) != null, "every shop at the base is an arsenal shop");
+			// Every item shop is an arsenal shop; the quartermaster sells services (see CTR_Test_Quartermaster).
+			MRX_ShopComponent itemShop = MRX_ShopComponent.Cast(entity.FindComponent(MRX_ShopComponent));
+			if (itemShop && itemShop.GetShopId() != CTR_ShopPricing.SHOP_SERVICES)
+				Check(MRX_ArsenalShopComponent.Find(entity) != null, "every item shop at the base is an arsenal shop");
 
 			if (entity.FindComponent(MRX_StashPointComponent))
 				stashPoints++;

@@ -1,0 +1,26 @@
+SCR_ChimeraCharacter : "{DE15FB5FAFC3E63F}Prefabs/Characters/Factions/BLUFOR/US_Army/Character_US_Officer.et" {
+ ID "520EC961A090B1EE"
+ components {
+  MRX_ShopComponent "{6A8D25295593D79F}" {
+   m_sShopId "contractors_services"
+   m_sDisplayName "Quartermaster"
+   m_sCatalog "{0C5226906912C24A}Configs/Contractors/Shop/CTR_ShopServices.conf"
+   m_bAllowSell 0
+   m_fMaxDistance 3
+  }
+  MRX_ShopKeeperComponent "{6A8D252955D9D311}" {
+  }
+  ActionsManagerComponent "{520EA1D2F659CE02}" {
+   additionalActions {
+    MRX_OpenShopAction "{6A8D252955DC5D3B}" {
+     ParentContextList {
+      "default"
+     }
+     UIInfo UIInfo "{6A8D252955D1B8D1}" {
+      Name "Talk to the Quartermaster"
+     }
+    }
+   }
+  }
+ }
+}
