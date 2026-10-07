@@ -10,6 +10,8 @@ class CTR_LastGear : Managed
 	static const string PROPERTY_KEY = "ctr.lastgear";
 	static const string LEDGER_SOURCE = "ctr_lastgear";
 	protected static const int SAVE_INTERVAL_MS = 60000;
+	protected static const int IDENTITY_POLL_MS = 500;
+	protected static const int IDENTITY_TIMEOUT_MS = 60000;
 
 	//! Gear by owner ID, loaded when the owner is ready: the spawn reads it synchronously.
 	protected ref map<string, ref MRX_SavedLoadout> m_mGear = new map<string, ref MRX_SavedLoadout>();
@@ -18,22 +20,13 @@ class CTR_LastGear : Managed
 	//! Bodies kept for a reconnect (weak) and their owners, same index.
 	protected ref array<IEntity> m_aReservedBodies = {};
 	protected ref array<string> m_aReservedOwners = {};
+	protected int m_iIdentityWaitedMs;
 
 	//------------------------------------------------------------------------------------------------
 	void Start(notnull SCR_BaseGameMode gameMode)
 	{
 		gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-		MRX_IdentityService identity = MRX_Marx.GetIdentity();
-		if (identity)
-			identity.GetOnOwnerReady().Insert(OnOwnerReady);
-
-		array<int> playerIds = {};
-		GetGame().GetPlayerManager().GetPlayers(playerIds);
-		foreach (int playerId : playerIds)
-		{
-			Load(MRX_Marx.GetOwnerId(playerId));
-		}
-
+		AttachIdentity();
 		GetGame().GetCallqueue().CallLater(SaveAll, SAVE_INTERVAL_MS, true);
 	}
 
@@ -43,7 +36,36 @@ class CTR_LastGear : Managed
 		// The call queue is gone when the game shuts down.
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		if (callQueue)
+		{
 			callQueue.Remove(SaveAll);
+			callQueue.Remove(AttachIdentity);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Loads the gear of each owner when it becomes known. The Marx identity service is created after the game mode
+	//! starts: waits for it, then also loads the owners already known.
+	protected void AttachIdentity()
+	{
+		MRX_IdentityService identity = MRX_Marx.GetIdentity();
+		if (!identity)
+		{
+			m_iIdentityWaitedMs += IDENTITY_POLL_MS;
+			if (m_iIdentityWaitedMs < IDENTITY_TIMEOUT_MS)
+				GetGame().GetCallqueue().CallLater(AttachIdentity, IDENTITY_POLL_MS);
+			else
+				Print("[CTR] No Marx identity service: the last gear of players is not loaded", LogLevel.ERROR);
+
+			return;
+		}
+
+		identity.GetOnOwnerReady().Insert(OnOwnerReady);
+		array<int> playerIds = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIds);
+		foreach (int playerId : playerIds)
+		{
+			Load(MRX_Marx.GetOwnerId(playerId));
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
