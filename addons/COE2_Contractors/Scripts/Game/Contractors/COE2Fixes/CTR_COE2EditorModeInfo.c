@@ -1,6 +1,7 @@
-//! COE2 adds its commander editor mode to the vanilla editor core config without UI info. Vanilla sorts the modes by
-//! that info when the editor core starts and throws a script exception on the missing one (a blocking dialog in
-//! Workbench). Modes without UI info get one here: COE2's own name for the mode, sorted after the vanilla modes.
+//! COE2 bug (fix proposed upstream: blackwaterbread/COE2_AR, branch fix-dedicated-client-issues): COE2 adds its
+//! commander editor mode to the vanilla editor core config without UI info. Vanilla sorts the modes by that info when the
+//! editor core starts and throws a script exception on the missing one (a blocking dialog in Workbench). Modes without UI
+//! info get one here: COE2's own name for the mode, sorted after the vanilla modes. Unused once COE2 is fixed; remove then.
 modded class SCR_EditorModePrefab
 {
 	protected ref SCR_EditorModeUIInfo m_CTR_FallbackInfo;

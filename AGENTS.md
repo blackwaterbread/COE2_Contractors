@@ -51,6 +51,11 @@ LICENSE, AGENTS.md         repo root, not packed
 - Marx Core and COE2 both override the vanilla `Configs/Systems/ChimeraSystemsConfig.conf`. The overrides merge (verified in Play): both `MRX_MarxSystem` and `COE_EnemySupportSystem` run. The startup log line `[CTR] Systems config ...` reports both.
 - COE2's mission headers set no systems config, so Marx would keep everything in memory. The Contractors mission headers (`Missions/CTR_COE2_<Map>.conf`) use `CTR_Systems.conf`, whose persistence config holds only the Marx collections (no world state).
 
+## COE2 bug workarounds
+- Workarounds for COE2 bugs live in `Scripts/Game/Contractors/COE2Fixes/`, one file per bug group, each headed by the bug and where the upstream fix is proposed (`blackwaterbread/COE2_AR`, branch `fix-dedicated-client-issues`, PR to `Kexanone/COE2_AR`).
+- They step in only when the bug's condition holds and otherwise call COE2's code (`super`); never copy a COE2 method body. They stay harmless once COE2 ships the fix; then delete the file.
+- Overriding a COE2 method breaks the build if COE2 renames or removes it. Prefer events, keep overrides few, and compile against each new COE2 release before publishing.
+
 ## Conventions
 - Script class prefix `CTR_`. Script path: `Scripts/Game/Contractors/...`.
 - Follow BI Enforce Script conventions: `m_` member prefix + type letter (`m_iCount`, `m_sName`, `m_bActive`, `m_aItems`, `m_mLookup`), `s_` statics, `UPPER_CASE` constants, PascalCase methods.
