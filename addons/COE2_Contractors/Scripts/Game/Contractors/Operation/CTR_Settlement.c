@@ -87,8 +87,13 @@ class CTR_Settlement : Managed
 	//------------------------------------------------------------------------------------------------
 	void ~CTR_Settlement()
 	{
-		GetGame().GetCallqueue().Remove(OnTimeout);
-		GetGame().GetCallqueue().Remove(Retry);
+		// The call queue is gone when the game shuts down.
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
+		if (!callQueue)
+			return;
+
+		callQueue.Remove(OnTimeout);
+		callQueue.Remove(Retry);
 	}
 
 	//------------------------------------------------------------------------------------------------
