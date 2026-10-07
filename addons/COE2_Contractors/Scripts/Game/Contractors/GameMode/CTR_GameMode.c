@@ -6,6 +6,8 @@ modded class COE_GameMode
 {
 	protected ref CTR_Operation m_CTR_Operation;
 	protected ref CTR_Settlement m_CTR_Settlement;
+	//! Server: gear players keep across sessions.
+	protected ref CTR_LastGear m_CTR_LastGear;
 	//! Set while the AO ends: players in vehicles ride along and their vehicles are kept.
 	protected bool m_bCTR_Returning;
 	//! Vehicles kept when the AO ends (weak: engine entities).
@@ -38,20 +40,45 @@ modded class COE_GameMode
 		CTR_CheckSystems();
 		Print(string.Format("[CTR] %1 base arsenals switched off", CTR_BaseArsenals.DisableAll()));
 		Print(string.Format("[CTR] Loadout prices from %1 shops", CTR_LoadoutPrices.Setup()));
+
+		m_CTR_LastGear = new CTR_LastGear();
+		m_CTR_LastGear.Start(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Every role respawns with the same minimal kit (not when the Game Master possesses a character). Applied before
-	//! the player takes control: replacing the role's weapon later leaves the character with nothing in hand.
+	//! Every role spawns with the gear the player last wore if they left alive, else with the same minimal kit (not when
+	//! the Game Master possesses a character). Applied before the player takes control: replacing the role's weapon
+	//! later leaves the character with nothing in hand.
 	override bool PreparePlayerEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
 		if (!super.PreparePlayerEntity_S(requestComponent, handlerComponent, data, entity))
 			return false;
 
-		if (entity && !SCR_PossessSpawnData.Cast(data))
+		if (!entity || SCR_PossessSpawnData.Cast(data))
+			return true;
+
+		if (!m_CTR_LastGear || !requestComponent || !m_CTR_LastGear.Apply(entity, requestComponent.GetPlayerId()))
 			CTR_StarterKit.Apply(entity, CTR_Settings.Get().GetStarterKit());
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Saves the leaving player's gear while their owner ID and character are still known.
+	override protected void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
+	{
+		if (m_CTR_LastGear)
+			m_CTR_LastGear.OnPlayerLeaving(playerId);
+
+		super.OnPlayerDisconnected(playerId, cause, timeout);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: the vanilla reconnect gave up on a kept body (see CTR_LastGear).
+	void CTR_OnReservedBodyExpired(IEntity body)
+	{
+		if (m_CTR_LastGear)
+			m_CTR_LastGear.OnReservedBodyExpired(body);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ class CTR_GearTests
 	static void Register(notnull CTR_TestRunner runner)
 	{
 		runner.Add(new CTR_Test_StarterKit());
+		runner.Add(new CTR_Test_LastGear());
 		runner.Add(new CTR_Test_SafeZone());
 		runner.Add(new CTR_Test_StashPageProduct());
 		runner.Add(new CTR_Test_Quartermaster());
@@ -76,6 +77,160 @@ class CTR_Test_StarterKit : CTR_TestCase
 
 		SCR_EntityHelper.DeleteEntityAndChildren(character);
 		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Last gear of a test owner: an ION rifleman's gear (one magazine half empty, one item issued) is saved, put on a
+//! character wearing the starter kit with the same items and state, read back from storage by a new instance, and
+//! gone after clearing.
+class CTR_Test_LastGear : CTR_TestCase
+{
+	static const string OWNER = "ctr-test:last-gear";
+	protected static const int HALF_AMMO = 7;
+
+	protected ref CTR_LastGear m_Reader;
+	protected IEntity m_Source;
+	protected IEntity m_Target;
+	protected int m_iSourceItems;
+	protected int m_iWaitMs;
+	protected bool m_bExpectGear;
+
+	//------------------------------------------------------------------------------------------------
+	override int GetTimeoutMs()
+	{
+		return 20000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !MRX_Marx.GetStash())
+		{
+			Skip("no COE2 game mode or stash service");
+			return;
+		}
+
+		m_Source = SpawnRifleman(gameMode, 40);
+		m_Target = SpawnRifleman(gameMode, 44);
+		Check(m_Source && m_Target, "riflemen spawn");
+		if (!m_Source || !m_Target)
+		{
+			End();
+			return;
+		}
+
+		// The rifleman prefab carries no spare magazine: give it one.
+		ChimeraCharacter source = ChimeraCharacter.Cast(m_Source);
+		InventoryStorageManagerComponent manager = source.GetCharacterController().GetInventoryStorageManager();
+		Check(manager.TrySpawnPrefabToStorage(CTR_StarterKit.MAGAZINE, null, -1, EStoragePurpose.PURPOSE_DEPOSIT), "a magazine fits the rifleman's gear");
+
+		array<IEntity> items = {};
+		MRX_EntitySnapshots.GetLoadoutItems(m_Source, items);
+		m_iSourceItems = items.Count();
+		BaseMagazineComponent halfMagazine;
+		foreach (IEntity item : items)
+		{
+			BaseMagazineComponent magazine = BaseMagazineComponent.Cast(item.FindComponent(BaseMagazineComponent));
+			if (magazine && magazine.GetMaxAmmoCount() > HALF_AMMO)
+			{
+				halfMagazine = magazine;
+				break;
+			}
+		}
+
+		Check(halfMagazine != null, "the rifleman carries a magazine");
+		if (halfMagazine)
+			halfMagazine.SetAmmoCount(HALF_AMMO);
+
+		MRX_IssuedItems.Mark(items[0], false);
+		CTR_StarterKit.Apply(m_Target, CTR_Settings.Get().GetStarterKit());
+
+		CTR_LastGear lastGear = new CTR_LastGear();
+		lastGear.Save(OWNER, m_Source);
+		Check(lastGear.ApplyOwner(m_Target, OWNER), "the saved gear is put on");
+		CheckGear(m_Target);
+
+		// A new instance reads what was written (the stash service runs the owner's requests in order).
+		m_bExpectGear = true;
+		m_Reader = new CTR_LastGear();
+		m_Reader.Load(OWNER);
+		m_iWaitMs = 0;
+		GetGame().GetCallqueue().CallLater(WaitForReader, 250, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckGear(notnull IEntity character)
+	{
+		array<IEntity> items = {};
+		MRX_EntitySnapshots.GetLoadoutItems(character, items);
+		CheckInt(items.Count(), m_iSourceItems, "same number of items as the source");
+
+		int issued, halfFull;
+		foreach (IEntity item : items)
+		{
+			if (MRX_IssuedItems.IsIssued(item))
+				issued++;
+
+			BaseMagazineComponent magazine = BaseMagazineComponent.Cast(item.FindComponent(BaseMagazineComponent));
+			if (magazine && magazine.GetAmmoCount() == HALF_AMMO)
+				halfFull++;
+		}
+
+		CheckInt(issued, 1, "the issued mark comes back, the starter kit's do not stay");
+		Check(halfFull >= 1, "the half empty magazine keeps its ammo");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void WaitForReader()
+	{
+		m_iWaitMs += 250;
+		// Reading gear ends the wait; a cleared owner never gains any, so that case waits a fixed time for the read.
+		bool done = m_bExpectGear && m_Reader.HasGear(OWNER);
+		if (!done && m_iWaitMs < 8000 && (m_bExpectGear || m_iWaitMs < 3000))
+			return;
+
+		GetGame().GetCallqueue().Remove(WaitForReader);
+		if (m_bExpectGear)
+		{
+			Check(done, "a new instance reads the saved gear from storage");
+			m_Reader.Clear(OWNER);
+			Check(!m_Reader.ApplyOwner(m_Target, OWNER), "nothing to put on after clearing");
+
+			m_bExpectGear = false;
+			m_Reader = new CTR_LastGear();
+			m_Reader.Load(OWNER);
+			m_iWaitMs = 0;
+			GetGame().GetCallqueue().CallLater(WaitForReader, 250, true);
+			return;
+		}
+
+		Check(!m_Reader.HasGear(OWNER), "storage holds no gear after clearing");
+		End();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void End()
+	{
+		if (m_Source)
+			SCR_EntityHelper.DeleteEntityAndChildren(m_Source);
+
+		if (m_Target)
+			SCR_EntityHelper.DeleteEntityAndChildren(m_Target);
+
+		Finish();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static IEntity SpawnRifleman(notnull COE_GameMode gameMode, float offset)
+	{
+		vector position = gameMode.GetMainBasePos() + Vector(0, 0, offset);
+		position[1] = GetGame().GetWorld().GetSurfaceY(position[0], position[2]);
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = position;
+		return GetGame().SpawnEntityPrefab(Resource.Load(CTR_GearTests.ION_RIFLEMAN), GetGame().GetWorld(), params);
 	}
 }
 

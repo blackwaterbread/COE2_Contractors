@@ -110,7 +110,7 @@ class CTR_StarterKit
 
 	//------------------------------------------------------------------------------------------------
 	//! Takes the first weapon (primary first) in hand, as the vanilla arsenal loadout does after putting gear on.
-	protected static void EquipWeapon(notnull ChimeraCharacter character)
+	static void EquipWeapon(notnull ChimeraCharacter character)
 	{
 		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
 		if (!weaponManager)
