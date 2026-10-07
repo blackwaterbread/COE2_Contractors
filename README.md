@@ -47,15 +47,7 @@ Use these scenarios rather than the COE2 ones: their headers set the systems con
 
 ## Development
 
-- Workbench (Arma Reforger Tools) with the Workshop mods above installed, and [Marx](https://github.com/blackwaterbread/Marx)
-  cloned next to this repository (or pass its location with `tools/launch-workbench.ps1 -MarxDir`).
-- `tools/launch-workbench.ps1` starts Workbench with this project, the Marx addons and the Workshop addons, without the
-  launcher. `-Tests` runs the Workbench-only test harness on every Play; `-AutoCloseTests` also leaves Play after the
-  run. Play a COE2 world (`worlds/COE/<Map>/COE2_<Map>.ent`) with the World Systems Config
-  `Configs/Contractors/Systems/CTR_Systems.conf`.
-- Generated configs (shop catalogs, mission headers, persistence) come from the WorldEditor plugins in
-  Plugins > Contractors.
-- See [AGENTS.md](AGENTS.md) for the rules and conventions of this repository.
+See [AGENTS.md](AGENTS.md).
 
 ## License
 

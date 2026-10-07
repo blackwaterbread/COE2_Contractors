@@ -25,7 +25,7 @@ COE2: Contractors is an unofficial variant of Kexanone's COE2 (co-op dynamic ope
 ## Repo layout
 ```
 addons/COE2_Contractors/   gproj ID COE2_Contractors (GUID 6A8AE49001FAD827), everything inside gets packed
-tools/                     launch-workbench.ps1, shop-default-contents.csv (not packed)
+tools/                     launch-workbench.ps1, publish.ts, shop-default-contents.csv (not packed)
 LICENSE, AGENTS.md         repo root, not packed
 ```
 
