@@ -10,6 +10,7 @@ class CTR_PayoutTests
 		runner.Add(new CTR_Test_TaskPricing());
 		runner.Add(new CTR_Test_PayoutRules());
 		runner.Add(new CTR_Test_StatMapping());
+		runner.Add(new CTR_Test_AIKills());
 		runner.Add(new CTR_Test_CprTime());
 		runner.Add(new CTR_Test_SettlementPaysOnce());
 		runner.Add(new CTR_Test_SettlementInProgress());
@@ -195,12 +196,37 @@ class CTR_Test_StatMapping : CTR_TestCase
 		CTR_Operation.AddStat(stats, SCR_EDataStats.DISTANCE_AS_OCCUPANT, 79.5);
 		CTR_Operation.AddStat(stats, SCR_EDataStats.WARCRIMES, 5);
 
-		CheckInt(stats.m_iKills, 3, "kills");
-		CheckInt(stats.m_iTeamKills, 2, "team kills");
+		CheckInt(stats.m_iKills, 1, "player kills only (AI kills come from death events)");
+		CheckInt(stats.m_iTeamKills, 1, "player team kills only");
 		CheckInt(stats.m_iDeaths, 1, "deaths");
 		CheckInt(stats.m_iShots, 30, "shots");
 		CheckInt(stats.m_iHeals, 1, "bandages on others only (no drugs, not on oneself)");
 		CheckInt(Math.Round(stats.m_fDistance), 200, "distance");
+		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! AI killed by a player: enemies are kills, friendlies team kills, civilians team kills only inside an AO.
+class CTR_Test_AIKills : CTR_TestCase
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		CTR_PlayerStats stats = new CTR_PlayerStats();
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, false, true);
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, false, false);
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER, false, false);
+		CheckInt(stats.m_iKills, 2, "enemy kills, inside and outside the AO");
+		CheckInt(stats.m_iTeamKills, 1, "friendly AI");
+
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, true, true);
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER, true, true);
+		CheckInt(stats.m_iKills, 2, "a civilian never counts as a kill, whatever the faction relation");
+		CheckInt(stats.m_iTeamKills, 3, "civilians inside the AO cost like team kills");
+
+		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, true, false);
+		CheckInt(stats.m_iTeamKills, 3, "civilians outside the AO cost nothing");
 		Finish();
 	}
 }

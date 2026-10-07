@@ -13,7 +13,8 @@ class CTR_Participant : Managed
 //------------------------------------------------------------------------------------------------
 //! An operation from AO generation until its tasks are finished or it is cancelled (server).
 //! Tracks who enters an AO and counts the vanilla data collector stats that players gain meanwhile, plus time spent on
-//! CPR (ACE Medical Circulation).
+//! CPR (ACE Medical Circulation). AI kills are counted from the death events of the game mode instead of the vanilla
+//! stats, which depend on faction friendliness and team kill settings: civilians could count as nothing or as paid kills.
 class CTR_Operation : Managed
 {
 	protected static const int TRACK_INTERVAL_MS = 2000;
@@ -66,6 +67,10 @@ class CTR_Operation : Managed
 		SCR_DataCollectorComponent collector = GetGame().GetDataCollector();
 		m_bCountTemporaryStats = collector && collector.FindModule(SCR_DataCollectorCrimesModule) != null;
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatAdded);
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnControllableDestroyed().Insert(OnControllableDestroyed);
+
 		GetGame().GetCallqueue().CallLater(Track, TRACK_INTERVAL_MS, true);
 		Track();
 	}
@@ -87,7 +92,14 @@ class CTR_Operation : Managed
 	protected void StopTracking()
 	{
 		SCR_PlayerData.s_OnStatAdded.Remove(OnStatAdded);
-		GetGame().GetCallqueue().Remove(Track);
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnControllableDestroyed().Remove(OnControllableDestroyed);
+
+		// The call queue is gone when the game shuts down.
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
+		if (callQueue)
+			callQueue.Remove(Track);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -222,13 +234,61 @@ class CTR_Operation : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Maps a vanilla data collector stat to the operation stats.
+	//! A player killed an AI character: counted here rather than from the vanilla AI kill stats.
+	protected void OnControllableDestroyed(notnull SCR_InstigatorContextData context)
+	{
+		if (m_bClosed)
+			return;
+
+		int killerId = context.GetKillerPlayerID();
+		ChimeraCharacter victim = ChimeraCharacter.Cast(context.GetVictimEntity());
+		if (killerId <= 0 || context.GetVictimPlayerID() > 0 || !victim)
+			return;
+
+		bool civilian;
+		COE_FactionManager factionManager = COE_FactionManager.Cast(GetGame().GetFactionManager());
+		FactionAffiliationComponent affiliation = FactionAffiliationComponent.Cast(victim.FindComponent(FactionAffiliationComponent));
+		if (factionManager && affiliation)
+		{
+			Faction victimFaction = affiliation.GetAffiliatedFaction();
+			civilian = victimFaction && victimFaction == factionManager.GetCivilianFaction();
+		}
+
+		bool inAO;
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (gameMode)
+			inAO = IsInAnyAO(victim.GetOrigin(), gameMode.GetCurrentAOs(), gameMode.GetAORadius());
+
+		CTR_Participant participant = GetOrAddParticipant(killerId, System.GetUnixTime());
+		AddAIKill(participant.m_Stats, context.GetVictimKillerRelation(), civilian, inAO);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An AI character killed by a player: enemies pay, friendlies and civilians inside an AO cost like a team kill.
+	static void AddAIKill(notnull CTR_PlayerStats stats, SCR_ECharacterDeathStatusRelations relation, bool civilian, bool inAO)
+	{
+		if (civilian)
+		{
+			if (inAO)
+				stats.m_iTeamKills++;
+
+			return;
+		}
+
+		if (relation == SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER)
+			stats.m_iKills++;
+		else if (relation == SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER)
+			stats.m_iTeamKills++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Maps a vanilla data collector stat to the operation stats. AI kills are left out (see AddAIKill).
 	static void AddStat(notnull CTR_PlayerStats stats, SCR_EDataStats stat, float amount)
 	{
 		int count = Math.Round(amount);
-		if (stat == SCR_EDataStats.KILLS || stat == SCR_EDataStats.AI_KILLS || stat == SCR_EDataStats.ROADKILLS || stat == SCR_EDataStats.AI_ROADKILLS)
+		if (stat == SCR_EDataStats.KILLS || stat == SCR_EDataStats.ROADKILLS)
 			stats.m_iKills += count;
-		else if (stat == SCR_EDataStats.FRIENDLY_KILLS || stat == SCR_EDataStats.FRIENDLY_AI_KILLS || stat == SCR_EDataStats.FRIENDLY_ROADKILLS || stat == SCR_EDataStats.FRIENDLY_AI_ROADKILLS)
+		else if (stat == SCR_EDataStats.FRIENDLY_KILLS || stat == SCR_EDataStats.FRIENDLY_ROADKILLS)
 			stats.m_iTeamKills += count;
 		else if (stat == SCR_EDataStats.DEATHS)
 			stats.m_iDeaths += count;
