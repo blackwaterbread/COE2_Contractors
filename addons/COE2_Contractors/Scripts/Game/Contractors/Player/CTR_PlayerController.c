@@ -220,6 +220,11 @@ modded class COE_PlayerController
 	//! are (e.g. those who returned during the loot time).
 	override void RequestFastTravel(vector pos, float rotation = 0, float searchRadius = 10)
 	{
+		// On a client the main entity ID can arrive before the character streams in; the ID is not replicated again, so
+		// m_MainEntity stays empty until it is resolved here.
+		if (!m_MainEntity)
+			OnRplMainEntityFromID();
+
 		// COE2 reads m_MainEntity without a check; it is empty until the player spawned through the respawn system.
 		if (!m_MainEntity || CTR_StaysPut())
 			return;
