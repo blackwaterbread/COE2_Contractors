@@ -391,6 +391,13 @@ class CTR_Test_LoadoutSlotProduct : CTR_TestCase
 	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
+		// Contractors' Marx settings (2 slots for everyone) come with its systems config.
+		if (!PersistenceSystem.GetInstance())
+		{
+			Skip("no persistence system (select CTR_Systems.conf as World Systems Config)");
+			return;
+		}
+
 		CheckInt(MRX_LoadoutSlots.GetBaseSlots(), 2, "loadout slots for everyone");
 		m_iMaxSlots = MRX_LoadoutSlots.GetMaxSlots();
 		CheckInt(m_iMaxSlots, 10, "loadout slots in the window");
