@@ -234,12 +234,14 @@ class CTR_OperationTimerHud : Managed
 
 		SizeLayoutWidget size = SizeLayoutWidget.Cast(CreateWidget(WidgetType.SizeLayoutWidgetTypeID, Color.FromInt(Color.WHITE), box));
 		AlignableSlot.SetHorizontalAlign(size, LayoutHorizontalAlign.Stretch);
+		// Here, not on the column: the box grows by this padding, a size layout ignores its child's. Less above than
+		// below: the font leaves room above the letters.
+		AlignableSlot.SetPadding(size, 0, 6, 0, 7);
 		size.EnableWidthOverride(true);
 		size.SetWidthOverride(width);
 		Widget column = CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), size);
 		AlignableSlot.SetHorizontalAlign(column, LayoutHorizontalAlign.Stretch);
-		// Nothing above, all below: the font leaves room above the letters.
-		AlignableSlot.SetPadding(column, 12 + ACCENT_WIDTH, 0, 12, 11);
+		AlignableSlot.SetPadding(column, 12 + ACCENT_WIDTH, 0, 12, 0);
 		return column;
 	}
 

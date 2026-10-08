@@ -3,7 +3,7 @@ StringTable {
  Items {
   CustomStringTableItem "{6A903DF0A3783FF9}" {
    Id "CTR-Alert_Cancelled"
-   Target_en_us "Operation cancelled"
+   Target_en_us "Operation Cancelled"
    Target_ko_kr "작전 취소"
    Modified 1787837960
    Author "denev"
@@ -19,7 +19,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A379BD6D}" {
    Id "CTR-Alert_EarlyExfil"
-   Target_en_us "Early exfil"
+   Target_en_us "Early Exfil"
    Target_ko_kr "조기 철수"
    Modified 1787837960
    Author "denev"
@@ -67,7 +67,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A37ED8F4}" {
    Id "CTR-Alert_Pursuit"
-   Target_en_us "Enemy pursuit"
+   Target_en_us "Enemy Pursuit"
    Target_ko_kr "적 추격대"
    Modified 1787837960
    Author "denev"
@@ -795,7 +795,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A36505CE}" {
    Id "CTR-Timer_Cancel"
-   Target_en_us "Cancelled, return in"
+   Target_en_us "Cancelled, Return In"
    Target_ko_kr "작전 취소 — 귀환까지"
    Modified 1787837960
    Author "denev"
@@ -803,7 +803,7 @@ StringTable {
   }
   CustomStringTableItem "{6A905A14A9315DF0}" {
    Id "CTR-Timer_EarlyExfil"
-   Target_en_us "Early exfil"
+   Target_en_us "Early Exfil"
    Target_ko_kr "조기 철수"
    Modified 1787845150
    Author "denev"
@@ -811,7 +811,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A366069B}" {
    Id "CTR-Timer_Exfil"
-   Target_en_us "Exfil in"
+   Target_en_us "Exfil In"
    Target_ko_kr "퇴출까지"
    Modified 1787837960
    Author "denev"
@@ -819,7 +819,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A364BBEC}" {
    Id "CTR-Timer_Hold"
-   Target_en_us "Return in"
+   Target_en_us "Return In"
    Target_ko_kr "귀환까지"
    Modified 1787837960
    Author "denev"
@@ -827,15 +827,15 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A361B268}" {
    Id "CTR-Timer_Operation"
-   Target_en_us "Operation"
-   Target_ko_kr "작전 시간"
+   Target_en_us "In Action"
+   Target_ko_kr "작전 중"
    Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }
   CustomStringTableItem "{6A905A14A93630BC}" {
    Id "CTR-Timer_OperationCancelled"
-   Target_en_us "Operation cancelled"
+   Target_en_us "Operation Cancelled"
    Target_ko_kr "작전 취소"
    Modified 1787845150
    Author "denev"
@@ -843,7 +843,7 @@ StringTable {
   }
   CustomStringTableItem "{6A905A14A930BEC5}" {
    Id "CTR-Timer_OperationComplete"
-   Target_en_us "Operation complete"
+   Target_en_us "Operation Complete"
    Target_ko_kr "작전 완료"
    Modified 1787845150
    Author "denev"
@@ -851,7 +851,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A366D87F}" {
    Id "CTR-Timer_Present"
-   Target_en_us "At exfil point"
+   Target_en_us "At Exfil Point"
    Target_ko_kr "탈출 지점"
    Modified 1787837960
    Author "denev"
@@ -867,7 +867,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A365EF56}" {
    Id "CTR-Timer_Pursuit"
-   Target_en_us "Enemy pursuit"
+   Target_en_us "Enemy Pursuit"
    Target_ko_kr "적 추격대"
    Modified 1787837960
    Author "denev"
