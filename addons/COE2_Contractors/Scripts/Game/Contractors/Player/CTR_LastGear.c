@@ -134,6 +134,34 @@ class CTR_LastGear : Managed
 	protected void OnOwnerReady(int playerId, string ownerId)
 	{
 		Load(ownerId);
+		// Known already when the player comes back: the load above does nothing then.
+		SendSpawnGear(ownerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tells the owner's players what they spawn with (their last gear or the starter kit), for the deploy menu's
+	//! preview (CTR_SpawnGear).
+	void SendSpawnGear(string ownerId)
+	{
+		if (ownerId.IsEmpty())
+			return;
+
+		MRX_ItemSnapshot visible;
+		MRX_SavedLoadout saved = m_mGear.Get(ownerId);
+		if (saved && saved.m_Loadout && !saved.m_Loadout.m_aChildren.IsEmpty())
+			visible = CTR_SpawnGear.GetVisible(saved.m_Loadout);
+
+		array<int> playerIds = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIds);
+		foreach (int playerId : playerIds)
+		{
+			if (MRX_Marx.GetOwnerId(playerId) != ownerId)
+				continue;
+
+			COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
+			if (controller)
+				controller.CTR_SendSpawnGear(visible);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -172,6 +200,8 @@ class CTR_LastGear : Managed
 		MRX_SavedLoadout saved = MRX_LoadoutService.Parse(json);
 		if (saved)
 			m_mGear.Set(ownerId, saved);
+
+		SendSpawnGear(ownerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -216,6 +246,7 @@ class CTR_LastGear : Managed
 
 		m_mGear.Remove(ownerId);
 		Write(ownerId, string.Empty);
+		SendSpawnGear(ownerId);
 	}
 
 	//------------------------------------------------------------------------------------------------

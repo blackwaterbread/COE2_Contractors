@@ -6,6 +6,8 @@ modded class COE_PlayerController
 {
 	protected static ref ScriptInvokerBase<CTR_OperationResultMethod> s_CTR_OnOperationResult;
 	protected static ref CTR_OperationResult s_CTR_LastResult;
+	//! Client: visible gear the local player spawns with; null for the starter kit (CTR_SpawnGear).
+	protected static ref MRX_ItemSnapshot s_CTR_SpawnGear;
 	//! Client: the operation timer on the HUD.
 	protected ref CTR_OperationTimerHud m_CTR_TimerHud;
 	//! Server: last operation screen request of this player, against floods.
@@ -28,6 +30,41 @@ modded class COE_PlayerController
 	static CTR_OperationResult CTR_GetLastResult()
 	{
 		return s_CTR_LastResult;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Client: visible gear the local player spawns with, null for the starter kit.
+	static MRX_ItemSnapshot CTR_GetSpawnGear()
+	{
+		return s_CTR_SpawnGear;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: tells the owner what they spawn with, for the deploy menu's preview. \param gear Visible gear
+	//! (CTR_SpawnGear.GetVisible), null for the starter kit.
+	void CTR_SendSpawnGear(MRX_ItemSnapshot gear)
+	{
+		string json;
+		if (gear)
+		{
+			MRX_SavedLoadout saved = new MRX_SavedLoadout();
+			saved.m_Loadout = gear;
+			json = MRX_LoadoutService.ToJson(saved);
+		}
+
+		Rpc(CTR_RpcDo_SpawnGear, json);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void CTR_RpcDo_SpawnGear(string json)
+	{
+		s_CTR_SpawnGear = null;
+		MRX_SavedLoadout saved = MRX_LoadoutService.Parse(json);
+		if (saved)
+			s_CTR_SpawnGear = saved.m_Loadout;
+
+		SCR_LoadoutPreviewComponent.CTR_RedressAll();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -9,6 +9,7 @@ class CTR_GearTests
 	{
 		runner.Add(new CTR_Test_StarterKit());
 		runner.Add(new CTR_Test_LastGear());
+		runner.Add(new CTR_Test_SpawnGearPreview());
 		runner.Add(new CTR_Test_SafeZone());
 		runner.Add(new CTR_Test_StashPageProduct());
 		runner.Add(new CTR_Test_Quartermaster());
@@ -444,6 +445,191 @@ class CTR_Test_Quartermaster : CTR_TestCase
 	{
 		m_aNearby.Insert(entity);
 		return true;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The deploy menu's preview wears what the player spawns with. An ION rifleman in the preview world (armor, helmet,
+//! AR-15) gets the starter kit without a last gear: no helmet or vest, the kit's clothes and the M16A2, nothing
+//! carried inside shows. With a last gear, the worn items, weapons and their attachments of a rifleman in the world.
+//! The gear reaches the client over the player controller.
+class CTR_Test_SpawnGearPreview : CTR_TestCase
+{
+	protected static const ResourceName PREVIEW_MANAGER = "{9F18C476AB860F3B}Prefabs/World/Game/ItemPreviewManager.et";
+
+	protected ref MRX_ItemSnapshot m_Visible;
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		IEntity preview = GetPreviewCharacter();
+		if (!gameMode || !preview)
+		{
+			Skip("no COE2 game mode or item preview");
+			return;
+		}
+
+		CTR_SpawnGear.Dress(preview, null);
+		array<ResourceName> worn = {};
+		GetWorn(preview, worn);
+		array<ResourceName> kitWorn = {CTR_StarterKit.JACKET, CTR_StarterKit.PANTS, CTR_StarterKit.BOOTS, CTR_StarterKit.GLOVES, CTR_StarterKit.RIFLE};
+		foreach (ResourceName prefab : kitWorn)
+		{
+			Check(worn.Contains(prefab), "kit: wears " + FilePath.StripPath(prefab));
+		}
+
+		Check(!worn.Contains(CTR_StarterKit.MAGAZINE), "kit: nothing carried inside shows");
+		SCR_CharacterInventoryStorageComponent clothing = SCR_CharacterInventoryStorageComponent.Cast(preview.FindComponent(SCR_CharacterInventoryStorageComponent));
+		Check(clothing && !clothing.GetClothFromArea(LoadoutHeadCoverArea), "kit: the role's helmet is gone");
+		Check(clothing && !clothing.GetClothFromArea(LoadoutVestArea), "kit: the role's vest is gone");
+
+		// A last gear: what a rifleman in the world wears.
+		vector position = gameMode.GetMainBasePos() + "0 0 40";
+		position[1] = GetGame().GetWorld().GetSurfaceY(position[0], position[2]);
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = position;
+		IEntity rifleman = GetGame().SpawnEntityPrefab(Resource.Load(CTR_GearTests.ION_RIFLEMAN), GetGame().GetWorld(), params);
+		if (!rifleman)
+		{
+			Check(false, "ION rifleman spawns");
+			Finish();
+			return;
+		}
+
+		MRX_ItemSnapshot loadout = MRX_EntitySnapshots.CaptureLoadoutState(rifleman);
+		m_Visible = CTR_SpawnGear.GetVisible(loadout);
+		CheckInt(m_Visible.m_aChildren.Count(), loadout.m_aChildren.Count(), "visible: every worn item and weapon");
+		Check(m_Visible.CountItems() < loadout.CountItems(), string.Format("visible: carried items left out (%1 of %2)", m_Visible.CountItems(), loadout.CountItems()));
+
+		CTR_SpawnGear.Dress(preview, m_Visible);
+		array<ResourceName> expected = {};
+		GetWorn(rifleman, expected);
+		worn.Clear();
+		GetWorn(preview, worn);
+		CheckString(Join(worn), Join(expected), "last gear: same worn items and weapons");
+		CheckString(Join(GetAttachments(preview)), Join(GetAttachments(rifleman)), "last gear: same weapon attachments");
+		SCR_EntityHelper.DeleteEntityAndChildren(rifleman);
+
+		SendToHost(m_Visible);
+		GetGame().GetCallqueue().CallLater(CheckReceived, 500);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckReceived()
+	{
+		MRX_ItemSnapshot received = COE_PlayerController.CTR_GetSpawnGear();
+		Check(received != null, "the gear reaches the client");
+		if (received)
+			CheckInt(received.CountItems(), m_Visible.CountItems(), "the client has all of it");
+
+		SendToHost(null);
+		GetGame().GetCallqueue().CallLater(CheckKitReceived, 500);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckKitReceived()
+	{
+		Check(COE_PlayerController.CTR_GetSpawnGear() == null, "no last gear: the client shows the kit");
+
+		// Back to what the server knows for the host.
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (gameMode && gameMode.CTR_GetLastGear())
+			gameMode.CTR_GetLastGear().SendSpawnGear(MRX_Marx.GetOwnerId(SCR_PlayerController.GetLocalPlayerId()));
+
+		Finish();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static void SendToHost(MRX_ItemSnapshot gear)
+	{
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			controller.CTR_SendSpawnGear(gear);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An ION rifleman in the item preview world, as the deploy menu shows a role.
+	protected static IEntity GetPreviewCharacter()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return null;
+
+		ItemPreviewManagerEntity previews = world.GetItemPreviewManager();
+		if (!previews)
+		{
+			GetGame().SpawnEntityPrefabLocal(Resource.Load(PREVIEW_MANAGER), world);
+			previews = world.GetItemPreviewManager();
+		}
+
+		if (!previews)
+			return null;
+
+		return previews.ResolvePreviewEntityForPrefab(CTR_GearTests.ION_RIFLEMAN);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Prefabs in the worn and weapon slots, sorted.
+	protected static void GetWorn(notnull IEntity character, notnull array<ResourceName> outPrefabs)
+	{
+		foreach (BaseInventoryStorageComponent storage : MRX_EntitySnapshots.GetLoadoutStorages(character))
+		{
+			if (!EquipedLoadoutStorageComponent.Cast(storage) && !EquipedWeaponStorageComponent.Cast(storage))
+				continue;
+
+			array<InventoryItemComponent> items = {};
+			storage.GetOwnedItems(items, false);
+			foreach (InventoryItemComponent item : items)
+			{
+				outPrefabs.Insert(SCR_ResourceNameUtils.GetPrefabName(item.GetOwner()));
+			}
+		}
+
+		outPrefabs.Sort();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Prefabs attached to the weapons, sorted.
+	protected static array<ResourceName> GetAttachments(notnull IEntity character)
+	{
+		array<ResourceName> attachments = {};
+		EquipedWeaponStorageComponent weapons = EquipedWeaponStorageComponent.Cast(character.FindComponent(EquipedWeaponStorageComponent));
+		if (!weapons)
+			return attachments;
+
+		for (int i = 0, count = weapons.GetSlotsCount(); i < count; i++)
+		{
+			IEntity weapon = weapons.Get(i);
+			WeaponAttachmentsStorageComponent storage;
+			if (weapon)
+				storage = WeaponAttachmentsStorageComponent.Cast(weapon.FindComponent(WeaponAttachmentsStorageComponent));
+
+			if (!storage)
+				continue;
+
+			for (int slot = 0, slots = storage.GetSlotsCount(); slot < slots; slot++)
+			{
+				if (storage.Get(slot))
+					attachments.Insert(SCR_ResourceNameUtils.GetPrefabName(storage.Get(slot)));
+			}
+		}
+
+		attachments.Sort();
+		return attachments;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static string Join(notnull array<ResourceName> prefabs)
+	{
+		string text;
+		foreach (ResourceName prefab : prefabs)
+		{
+			text += FilePath.StripPath(prefab) + " ";
+		}
+
+		return text;
 	}
 }
 #endif
