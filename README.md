@@ -11,7 +11,7 @@ and a personal stash keeps it between sessions. Unofficial; not affiliated with 
 
 - **Pay:** money for completed tasks, kills and treating teammates (bandages and CPR); deductions for deaths and
   friendly or civilian kills. Paid after the exfil, with a result screen showing the breakdown.
-- **Exfil:** once the tasks are done (or the commander orders an early exfil), reach the exfil point within 15 minutes
+- **Exfil:** once the tasks are done (or the commander orders an early exfil), reach the exfil point within 10 minutes
   to get paid and return to the safehouse; vehicles come along with their crew. Miss it and you are missing in
   action: no pay, and everyone still outside the safehouse dies. The commander can cancel for part of the pay before
   the exfil, nothing during it. An operation timer shows the countdown.

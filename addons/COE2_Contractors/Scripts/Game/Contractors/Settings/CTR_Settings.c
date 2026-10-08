@@ -66,7 +66,7 @@ class CTR_Settings
 	[Attribute("120", desc: "Most seconds of CPR on one patient that pay in an operation (ACE revives in about a minute when the patient has enough blood)", params: "0 600")]
 	int m_iCprMaxSecondsPerPatient;
 
-	[Attribute("900", desc: "Exfil countdown: seconds from the end of the last task (or the early exfil order) to reach the exfil point. When it runs out the operation ends missing in action.", params: "60 3600", category: "Exfil")]
+	[Attribute("600", desc: "Exfil countdown: seconds from the end of the last task (or the early exfil order) to reach the exfil point. When it runs out the operation ends missing in action.", params: "60 3600", category: "Exfil")]
 	int m_iExfilCountdownSeconds;
 
 	[Attribute("30", desc: "Meters around the exfil point that count as being there (3D, vehicles included)", params: "5 200", category: "Exfil")]
@@ -78,10 +78,10 @@ class CTR_Settings
 	[Attribute("10", desc: "Seconds the players must hold the exfil point", params: "0 120", category: "Exfil")]
 	int m_iExfilHoldSeconds;
 
-	[Attribute("1000", desc: "Least distance from the edge of every AO to the exfil point, in meters", params: "0 10000", category: "Exfil")]
+	[Attribute("0", desc: "Least distance from the edge of every AO to the exfil point, in meters. 0 = anywhere outside the AOs.", params: "0 10000", category: "Exfil")]
 	float m_fExfilMinDistance;
 
-	[Attribute("2000", desc: "Most distance from the edge of the nearest AO to the exfil point, in meters. 0 = no limit.", params: "0 20000", category: "Exfil")]
+	[Attribute("0", desc: "Most distance from the edge of the nearest AO to the exfil point, in meters. 0 = no limit.", params: "0 20000", category: "Exfil")]
 	float m_fExfilMaxDistance;
 
 	[Attribute("25", desc: "Percent of the earnings (tasks, kills, heals) paid when the commander cancels before the exfil. Deductions stay whole.", params: "0 100", category: "Exfil")]
@@ -169,12 +169,12 @@ class CTR_Settings
 		settings.m_iFriendlyHealReward = 300;
 		settings.m_iCprRewardSeconds = 15;
 		settings.m_iCprMaxSecondsPerPatient = 120;
-		settings.m_iExfilCountdownSeconds = 900;
+		settings.m_iExfilCountdownSeconds = 600;
 		settings.m_fExfilRadius = 30;
 		settings.m_fExfilPlayerRatio = 0.75;
 		settings.m_iExfilHoldSeconds = 10;
-		settings.m_fExfilMinDistance = 1000;
-		settings.m_fExfilMaxDistance = 2000;
+		settings.m_fExfilMinDistance = 0;
+		settings.m_fExfilMaxDistance = 0;
 		settings.m_iCancelPayPercent = 25;
 		settings.m_iExfilCancelPayPercent = 0;
 		settings.m_iMiaPayPercent = 0;

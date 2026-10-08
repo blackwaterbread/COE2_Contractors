@@ -4,6 +4,9 @@ class CTR_DevTools
 {
 	//! AOs closer than this to the main base are not picked.
 	static const float MIN_AO_BASE_DISTANCE = 800;
+	//! Distance of the exfil point from the edge of the AO when the settings have no least distance: on the edge itself
+	//! rounding could put it inside the AO.
+	protected static const float EXFIL_DISTANCE = 1000;
 
 	//------------------------------------------------------------------------------------------------
 	//! Server. Generates an AO the way the commander does, at a random location away from the base.
@@ -70,6 +73,9 @@ class CTR_DevTools
 	{
 		CTR_Settings settings = CTR_Settings.Get();
 		float distance = aoRadius + settings.m_fExfilMinDistance;
+		if (settings.m_fExfilMinDistance <= 0)
+			distance = aoRadius + EXFIL_DISTANCE;
+
 		if (settings.m_fExfilMaxDistance > settings.m_fExfilMinDistance)
 			distance = aoRadius + (settings.m_fExfilMinDistance + settings.m_fExfilMaxDistance) / 2;
 
