@@ -12,6 +12,7 @@ class CTR_GearTests
 		runner.Add(new CTR_Test_SpawnGearPreview());
 		runner.Add(new CTR_Test_SafeZone());
 		runner.Add(new CTR_Test_StashPageProduct());
+		runner.Add(new CTR_Test_LoadoutSlotProduct());
 		runner.Add(new CTR_Test_Quartermaster());
 	}
 }
@@ -367,8 +368,123 @@ class CTR_Test_StashPageProduct : CTR_TestCase
 }
 
 //------------------------------------------------------------------------------------------------
-//! The quartermaster stands at the base: a shop keeper with the services catalog (stash pages) and the trade action;
-//! loadout prices come from the arsenal shops.
+//! The loadout slot product on a test owner one slot below the maximum: unlocks a slot, reports the slots, refuses at
+//! the maximum. Contractors unlocks 2 of 10 slots for everyone.
+class CTR_Test_LoadoutSlotProduct : CTR_TestCase
+{
+	static const string OWNER = "ctr-test:loadout-slots";
+
+	protected ref CTR_LoadoutSlotProduct m_Product;
+	protected ref MRX_ShopItem m_Item;
+	protected ref MRX_ShopProductCallback m_Callback;
+	protected ref MRX_ShopProductStateCallback m_StateCallback;
+	protected ref MRX_StashResultCallback m_ResetCallback;
+	protected int m_iMaxSlots;
+	protected bool m_bEnding;
+
+	//------------------------------------------------------------------------------------------------
+	override int GetTimeoutMs()
+	{
+		return 15000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		CheckInt(MRX_LoadoutSlots.GetBaseSlots(), 2, "loadout slots for everyone");
+		m_iMaxSlots = MRX_LoadoutSlots.GetMaxSlots();
+		CheckInt(m_iMaxSlots, 10, "loadout slots in the window");
+		if (!MRX_Marx.GetStash() || m_iMaxSlots <= MRX_LoadoutSlots.GetBaseSlots())
+		{
+			Skip("no stash service or no slots to unlock");
+			return;
+		}
+
+		m_Product = new CTR_LoadoutSlotProduct();
+		m_Item = MRX_ShopItem.Create("loadout_slot", ResourceName.Empty, 1500000);
+		m_Item.m_Product = m_Product;
+		Reset(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Starts one slot below the maximum, or ends removing the test owner's extra slots.
+	protected void Reset(bool ending)
+	{
+		m_bEnding = ending;
+		string extra;
+		if (!ending)
+			extra = (m_iMaxSlots - MRX_LoadoutSlots.GetBaseSlots() - 1).ToString();
+
+		m_ResetCallback = new MRX_StashResultCallback();
+		m_ResetCallback.GetOnResult().Insert(OnReset);
+		MRX_TxContext context = MRX_TxContext.Create("test", "loadout slots", "test:" + MRX_Marx.NewId());
+		MRX_Marx.GetStash().SetProperty(OWNER, MRX_PropertyChange.Create(MRX_LoadoutSlots.PROPERTY, extra), context, m_ResetCallback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnReset(MRX_StashResult result)
+	{
+		if (m_bEnding)
+		{
+			Finish();
+			return;
+		}
+
+		m_Callback = new MRX_ShopProductCallback();
+		m_Callback.GetOnResult().Insert(OnChecked);
+		m_Product.Check(0, OWNER, m_Item, m_Callback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnChecked(MRX_EShopStatus status)
+	{
+		CheckInt(status, MRX_EShopStatus.OK, "check below the maximum");
+		m_Callback = new MRX_ShopProductCallback();
+		m_Callback.GetOnResult().Insert(OnDelivered);
+		m_Product.Deliver(0, OWNER, m_Item, m_Callback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDelivered(MRX_EShopStatus status)
+	{
+		CheckInt(status, MRX_EShopStatus.OK, "slot unlocked");
+		m_StateCallback = new MRX_ShopProductStateCallback();
+		m_StateCallback.GetOnResult().Insert(OnState);
+		m_Product.GetState(0, OWNER, m_Item, m_StateCallback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnState(MRX_ShopProductState state)
+	{
+		Check(state && !state.m_bAvailable, "not available at the maximum");
+		if (state)
+			CheckString(state.m_sText, CTR_LoadoutSlotProduct.FormatState(m_iMaxSlots, m_iMaxSlots), "state text");
+
+		m_Callback = new MRX_ShopProductCallback();
+		m_Callback.GetOnResult().Insert(OnCheckedAtMaximum);
+		m_Product.Check(0, OWNER, m_Item, m_Callback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCheckedAtMaximum(MRX_EShopStatus status)
+	{
+		CheckInt(status, MRX_EShopStatus.LIMIT_REACHED, "check at the maximum");
+		m_Callback = new MRX_ShopProductCallback();
+		m_Callback.GetOnResult().Insert(OnDeliveredAtMaximum);
+		m_Product.Deliver(0, OWNER, m_Item, m_Callback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDeliveredAtMaximum(MRX_EShopStatus status)
+	{
+		CheckInt(status, MRX_EShopStatus.LIMIT_REACHED, "delivery at the maximum");
+		Reset(true);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The quartermaster stands at the base: a shop keeper with the services catalog (stash pages, loadout slots) and the
+//! trade action; loadout prices come from the arsenal shops.
 class CTR_Test_Quartermaster : CTR_TestCase
 {
 	protected static const float NEARBY_RADIUS = 40;
@@ -409,6 +525,14 @@ class CTR_Test_Quartermaster : CTR_TestCase
 			Check(page && CTR_StashPageProduct.Cast(page.m_Product) != null, "sells stash pages");
 			if (page)
 				CheckInt(page.m_iPrice, 1000000, "stash page price");
+
+			MRX_ShopItem slot;
+			if (definition)
+				slot = definition.m_Catalog.FindItem("loadout_slot");
+
+			Check(slot && CTR_LoadoutSlotProduct.Cast(slot.m_Product) != null, "sells loadout slots");
+			if (slot)
+				CheckInt(slot.m_iPrice, 1500000, "loadout slot price");
 
 			Check(definition && !definition.m_bAllowSell, "buys nothing back");
 			Check(HasTradeAction(quartermaster), "trade action");

@@ -35,6 +35,9 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	static const int STARTING_CASH = 5000;
 	//! A full stash of 8 pages holds up to 384 one-cell items.
 	static const int MAX_STASH_ASSETS = 400;
+	//! Loadout slots unlocked for everyone; the quartermaster unlocks more, up to MAX_LOADOUT_SLOTS.
+	static const int LOADOUT_SLOTS = 2;
+	static const int MAX_LOADOUT_SLOTS = 10;
 
 	//! Keeps created container resources alive until the plugin finishes.
 	protected ref array<ref Resource> m_aHolders = {};
@@ -91,7 +94,8 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Catalog of the quartermaster: stash pages for $1,000,000 each, up to 8 pages. Not rewritten once it exists.
+	//! Catalog of the quartermaster: stash pages for $1,000,000 each, up to 8 pages, and loadout slots for $1,500,000
+	//! each, up to the slots the loadout window shows. Not rewritten once it exists.
 	protected ResourceName CreateServicesCatalog()
 	{
 		CTR_StashPageProduct product = new CTR_StashPageProduct();
@@ -102,8 +106,14 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		item.m_sDescription = "#CTR-Shop_StashExpansionDesc";
 		item.m_Product = product;
 
+		MRX_ShopItem loadoutSlot = MRX_ShopItem.Create("loadout_slot", "{2835A0EA3B79E63E}Prefabs/Characters/Vests/Vest_ALICE/Variants/Vest_ALICE_rifleman.et", 1500000, CTR_Settings.Get().m_sCurrency, 0);
+		loadoutSlot.m_sName = "#CTR-Shop_LoadoutExpansion";
+		loadoutSlot.m_sCategory = "#CTR-Category_Stash";
+		loadoutSlot.m_sDescription = "#CTR-Shop_LoadoutExpansionDesc";
+		loadoutSlot.m_Product = new CTR_LoadoutSlotProduct();
+
 		MRX_ShopCatalog catalog = new MRX_ShopCatalog();
-		catalog.m_aItems = {item};
+		catalog.m_aItems = {item, loadoutSlot};
 		Resource holder = BaseContainerTools.CreateContainerFromInstance(catalog);
 		if (!holder || !holder.IsValid())
 		{
@@ -420,6 +430,8 @@ class CTR_ConfigsPlugin : WorldEditorPlugin
 		Log("cash.m_iInitialBalance", cash.Set("m_iInitialBalance", STARTING_CASH));
 		Log("m_aCurrencies", root.SetObjectArray("m_aCurrencies").Insert(cash));
 		Log("m_iMaxStashAssets", root.Set("m_iMaxStashAssets", MAX_STASH_ASSETS));
+		Log("m_iLoadoutSlots", root.Set("m_iLoadoutSlots", LOADOUT_SLOTS));
+		Log("m_iMaxLoadoutSlots", root.Set("m_iMaxLoadoutSlots", MAX_LOADOUT_SLOTS));
 
 		return SaveAndRegister(root, MARX_SETTINGS_FILE);
 	}

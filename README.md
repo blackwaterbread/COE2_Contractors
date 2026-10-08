@@ -17,9 +17,9 @@ and a personal stash keeps it between sessions. Unofficial; not affiliated with 
   the exfil, nothing during it. An operation timer shows the countdown.
 - **Enemy pursuit:** enemy waves may chase you to the exfil point, more likely the more civilians you killed.
 - **Shops:** the safehouse's two arsenal boxes sell weapons and equipment
-  and buy them back at 50%. A quartermaster sells extra stash pages.
+  and buy them back at 50%. A quartermaster sells extra stash pages and loadout slots.
 - **Stash:** a personal stash in the safehouse wardrobe, kept across deaths and server restarts, with saved loadouts
-  that rebuy what is missing.
+  that take what is missing from the stash or rebuy it (2 slots, up to 10 with slots from the quartermaster).
 - **Respawn kit:** every role respawns with the same minimal issued kit, worth nothing in the shops.
 - **Safe zone:** no firing or throwing inside the safehouse.
 - **Factions:** RHS ION contractors against RHS AFRF by default; the commander can change them.

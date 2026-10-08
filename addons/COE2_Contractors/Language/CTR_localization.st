@@ -729,6 +729,30 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A90A978A8C03617}" {
+   Id "CTR-Shop_LoadoutExpansion"
+   Target_en_us "Loadout Slot"
+   Target_ko_kr "로드아웃 슬롯 추가"
+   Modified 1787865481
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A90A978A8C09B23}" {
+   Id "CTR-Shop_LoadoutExpansionDesc"
+   Target_en_us "Unlocks one more loadout slot at the stash, up to 10"
+   Target_ko_kr "보관함 로드아웃 슬롯을 하나 더 엽니다 (최대 10개)"
+   Modified 1787865481
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A90A978A8C10CDE}" {
+   Id "CTR-Shop_LoadoutSlots"
+   Target_en_us "Loadouts: %1 / %2"
+   Target_ko_kr "로드아웃: %1 / %2"
+   Modified 1787865481
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DF82B2B}" {
    Id "CTR-Shop_Quartermaster"
    Target_en_us "Quartermaster"
