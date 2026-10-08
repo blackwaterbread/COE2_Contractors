@@ -1,6 +1,6 @@
-//! Operation screen (client): earnings, personal stats, the operation's tasks with their grid position and outcome,
-//! and team totals. While the operation runs it shows the earnings so far and the pay if the exfil succeeds; after it,
-//! how it ended and what was paid. The screen stays until it is closed.
+//! Operation screen (client): personal stats, the operation's tasks with their grid position and outcome, team totals,
+//! and the earnings at the bottom. While the operation runs it shows the earnings so far and the pay if the exfil
+//! succeeds; after it, how it ended and what was paid. The screen stays until it is closed.
 //! Missing in action it holds the player: it cannot be closed and counts down to their death, then closes.
 class CTR_ResultDialog : MRX_ScriptedDialog
 {
@@ -15,6 +15,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static const int COLOR_LOSS = 0xFFE06060;
 	protected static const int COLOR_MUTED = 0xFFA0A0A0;
 	protected static const int COLOR_SECTION = 0xFFE0C060;
+	protected static const int COLOR_RULE = 0xFF5A5F66;
+	protected static const float TITLE_RULE_HEIGHT = 2;
+	protected static const float TOTAL_RULE_HEIGHT = 1;
+	//! Taken off the room the dialog layout leaves above its content ("Content"), so the line under the title sits as
+	//! far from the title as from the line below it.
+	protected static const float TITLE_GAP_CUT = 12;
 	protected static const int HELD_UPDATE_MS = 200;
 	//! Missing in action: the screen lets go when the player is still alive this long after their time was up.
 	protected static const int HELD_GRACE_MS = 10000;
@@ -93,6 +99,19 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	{
 		SetDialogWidth(WINDOW_WIDTH);
 
+		// A line under the title, as far from it as from the line below.
+		Widget content = OverlayWidget.Cast(GetRootWidget().FindAnyWidget("Content"));
+		if (content)
+		{
+			float left, top, right, bottom;
+			AlignableSlot.GetPadding(content, left, top, right, bottom);
+			AlignableSlot.SetPadding(content, left, Math.Max(0, top - TITLE_GAP_CUT), right, bottom);
+		}
+
+		// In the gold of the section titles: an image takes its color as linear, so it is converted.
+		Color gold = Color.FromSRGBA((COLOR_SECTION >> 16) & 0xFF, (COLOR_SECTION >> 8) & 0xFF, COLOR_SECTION & 0xFF, 255);
+		AddRule(m_wHeader, gold, TITLE_RULE_HEIGHT, 0, 14);
+
 		m_wAreas = AddHeaderLine(GetAreaNames());
 		SetColor(m_wAreas, COLOR_MUTED);
 		if (m_Result.m_bInProgress)
@@ -113,10 +132,10 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (!m_wList)
 			return;
 
-		AddEarnings();
 		AddPersonalStats();
 		AddTasks();
 		AddTeamTotals();
+		AddEarnings();
 
 		if (m_Result.m_bInProgress)
 			GetGame().GetCallqueue().CallLater(UpdateElapsed, 1000, true);
@@ -246,6 +265,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			if (stats.m_bEnteredAO)
 				AddPayLines();
 
+			AddRule(m_wList, Color.FromInt(COLOR_RULE), TOTAL_RULE_HEIGHT, 6, 4);
 			AddLine("#CTR-Result_IfSuccess", FormatAmount(m_Result.m_iTotalIfSuccess, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfSuccess), SECTION_FONT_SIZE);
 			return;
 		}
@@ -261,8 +281,11 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		else
 			AddPayLines();
 
-		AddLine("#CTR-Result_Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
-		AddLine(GetPayStatusText(), GetBalanceText(), COLOR_MUTED);
+		AddRule(m_wList, Color.FromInt(COLOR_RULE), TOTAL_RULE_HEIGHT, 6, 4);
+		AddLine("#CTR-Result_Total", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal), SECTION_FONT_SIZE);
+		string status = GetPayStatusText();
+		if (!status.IsEmpty())
+			AddLine(status, string.Empty, COLOR_MUTED);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -296,27 +319,18 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Only when the pay did not go through as shown; empty when it was paid or there was nothing to pay.
 	protected string GetPayStatusText()
 	{
 		switch (m_Result.m_ePayStatus)
 		{
-			case CTR_EPayStatus.PAID: return "#CTR-Result_Paid";
 			case CTR_EPayStatus.ALREADY_PAID: return "#CTR-Result_AlreadyPaid";
 			case CTR_EPayStatus.NO_OWNER: return "#CTR-Result_NoOwner";
 			case CTR_EPayStatus.FAILED: return "#CTR-Result_PayFailed";
 			case CTR_EPayStatus.PENDING: return "#CTR-Result_PayPending";
 		}
 
-		return "#CTR-Result_NothingToPay";
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected string GetBalanceText()
-	{
-		if (!m_Result.m_bHasBalance)
-			return string.Empty;
-
-		return WidgetManager.Translate("#CTR-Result_Balance", MRX_TextFormat.Money(m_Result.m_iBalance, m_Result.m_sCurrency));
+		return string.Empty;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -376,12 +390,29 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! A line across the window, between parts.
+	protected void AddRule(Widget parent, Color color, float height, float top, float bottom)
+	{
+		if (!parent)
+			return;
+
+		ImageWidget rule = ImageWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WIDGET_FLAGS, color, 0, parent));
+		if (!rule)
+			return;
+
+		// At least one screen pixel: thinner, it is drawn or not depending on where it falls on a scaled-down screen.
+		rule.SetSize(1, Math.Max(height, GetGame().GetWorkspace().DPIUnscale(1)));
+		AlignableSlot.SetHorizontalAlign(rule, LayoutHorizontalAlign.Stretch);
+		AlignableSlot.SetPadding(rule, 0, top, 0, bottom);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void AddSection(string title)
 	{
 		TextWidget text = CreateText(m_wList, title);
 		text.SetExactFontSize(SECTION_FONT_SIZE);
 		SetColor(text, COLOR_SECTION);
-		AlignableSlot.SetPadding(text, 0, 12, 0, 4);
+		AlignableSlot.SetPadding(text, 0, 20, 0, 4);
 	}
 
 	//------------------------------------------------------------------------------------------------

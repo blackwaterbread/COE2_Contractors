@@ -393,14 +393,6 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DDC359C}" {
-   Id "CTR-Result_Balance"
-   Target_en_us "Balance %1"
-   Target_ko_kr "잔액 %1"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
   CustomStringTableItem "{6A8E48E58DDA6B86}" {
    Id "CTR-Result_Deaths"
    Target_en_us "Deaths"
@@ -459,8 +451,8 @@ StringTable {
   }
   CustomStringTableItem "{6A907265A0DC65D5}" {
    Id "CTR-Result_MissingCountdown"
-   Target_en_us "You die in %1 s"
-   Target_ko_kr "%1초 후 사망"
+   Target_en_us "Declared missing in %1 s"
+   Target_ko_kr "%1초 뒤 실종 처리됩니다"
    Modified 1787851395
    Author "denev"
    LastChanged "denev"
@@ -505,26 +497,10 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DDF0FF0}" {
-   Id "CTR-Result_NothingToPay"
-   Target_en_us "Nothing to pay"
-   Target_ko_kr "지급할 금액 없음"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
   CustomStringTableItem "{6A8E48E58DE9198D}" {
    Id "CTR-Result_OperationTime"
    Target_en_us "Operation time"
    Target_ko_kr "작전 시간"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DDB1E69}" {
-   Id "CTR-Result_Paid"
-   Target_en_us "Paid"
-   Target_ko_kr "지급 완료"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -675,7 +651,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A360E918}" {
    Id "CTR-Result_TitleAbandoned"
-   Target_en_us "Exfil abandoned"
+   Target_en_us "Exfil Abandoned"
    Target_ko_kr "탈출 포기"
    Modified 1787837960
    Author "denev"
@@ -683,7 +659,7 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DB5977A}" {
    Id "CTR-Result_TitleCancelled"
-   Target_en_us "Operation cancelled"
+   Target_en_us "Operation Cancelled"
    Target_ko_kr "작전 취소"
    Modified 1787709731
    Author "denev"
@@ -691,7 +667,7 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DCB070B}" {
    Id "CTR-Result_TitleComplete"
-   Target_en_us "Operation complete"
+   Target_en_us "Operation Complete"
    Target_ko_kr "작전 완료"
    Modified 1787709731
    Author "denev"
@@ -699,7 +675,7 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A3636B55}" {
    Id "CTR-Result_TitleEarlyExfil"
-   Target_en_us "Early exfil"
+   Target_en_us "Early Exfil"
    Target_ko_kr "조기 철수"
    Modified 1787837960
    Author "denev"
@@ -707,7 +683,7 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DCA5789}" {
    Id "CTR-Result_TitleFailed"
-   Target_en_us "Operation failed"
+   Target_en_us "Operation Failed"
    Target_ko_kr "작전 실패"
    Modified 1787709731
    Author "denev"
@@ -715,7 +691,7 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DB411BF}" {
    Id "CTR-Result_TitleInProgress"
-   Target_en_us "Operation in progress"
+   Target_en_us "Operation In Progress"
    Target_ko_kr "작전 진행 중"
    Modified 1787709731
    Author "denev"
