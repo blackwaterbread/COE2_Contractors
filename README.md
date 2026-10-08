@@ -10,9 +10,12 @@ and a personal stash keeps it between sessions. Unofficial; not affiliated with 
 ## Features
 
 - **Pay:** money for completed tasks, kills and treating teammates (bandages and CPR); deductions for deaths and
-  friendly or civilian kills. Paid when the operation ends, with a result screen showing the breakdown.
-- **Return to base:** loot time after an operation, then everyone still in the AO returns to the safehouse. Players can
-  return earlier from the pause menu (Operation); drivers bring their vehicle and passengers along.
+  friendly or civilian kills. Paid after the exfil, with a result screen showing the breakdown.
+- **Exfil:** once the tasks are done (or the commander orders an early exfil), reach the exfil point within 15 minutes
+  to get paid and return to the safehouse; vehicles come along with their crew. Miss it and you are missing in
+  action: no pay, and everyone still outside the safehouse dies. The commander can cancel for part of the pay before
+  the exfil, nothing during it. An operation timer shows the countdown.
+- **Enemy pursuit:** enemy waves may chase you to the exfil point, more likely the more civilians you killed.
 - **Shops:** the safehouse's two arsenal boxes sell weapons and equipment
   and buy them back at 50%. A quartermaster sells extra stash pages.
 - **Stash:** a personal stash in the safehouse wardrobe, kept across deaths and server restarts, with saved loadouts

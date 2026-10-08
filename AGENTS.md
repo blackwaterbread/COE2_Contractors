@@ -36,7 +36,7 @@ LICENSE, AGENTS.md         repo root, not packed
 - Two arsenal shops at the base by kind of item: weapons, and everything else (clothing, gear, supplies). They are the two FIA arsenal boxes of the main base with Marx's arsenal shop components; the other arsenals are switched off (`Base/CTR_BaseArsenals.c`). Catalogs come from the vanilla and RHS faction item catalogs; categories and prices are in `Shop/CTR_ShopPricing.c`.
 - Prices cover the items a prefab comes with (default contents), or buying and selling back would pay. The contents are measured in Play by the test `CTR_Test_ShopContents`, which also checks that no item pays; "Create Contractors Configs" reads them from `tools/shop-default-contents.csv`. After the catalogs gain items (new mods, game update): run the tests, copy `$profile:ctr_shop_default_contents.csv` to that file, run the plugin again.
 - COE2's worlds use `COE_Hideout_01.et` as the main base, not `COE_MainBase_Base.et`.
-- Hand testing in Workbench Play: without the test harness, the game starts with the mission header factions (RHS ION against RHS AFRF, `GameMode/CTR_Factions.c`) and the host as commander (`Dev/CTR_QuickStart.c`), so you can deploy at the base right away. Chat commands (admin, diag builds): `#ctr ao [tasks]`, `#ctr go`, `#ctr win`, `#ctr fail`, `#ctr cancel`, `#ctr base`, `#ctr cash [amount]` (`Dev/CTR_DevCommand.c`).
+- Hand testing in Workbench Play: without the test harness, the game starts with the mission header factions (RHS ION against RHS AFRF, `GameMode/CTR_Factions.c`) and the host as commander (`Dev/CTR_QuickStart.c`), so you can deploy at the base right away. Chat commands (admin, diag builds): `#ctr ao [tasks]` (puts an exfil point too), `#ctr go`, `#ctr win`, `#ctr fail`, `#ctr cancel`, `#ctr early`, `#ctr exfil`, `#ctr exfilnow`, `#ctr mia`, `#ctr cd <seconds>`, `#ctr pursuit`, `#ctr civ`, `#ctr base`, `#ctr cash [amount]` (`Dev/CTR_DevCommand.c`).
 
 ## Rules (non-negotiable)
 - Never copy or edit COE2, Kex Scenario Core, ACE, RHS or Marx files. Extend them with `modded class`, event subscriptions, and inherited or overridden resources created in Workbench ("Inherit in" / "Override in").
@@ -50,6 +50,8 @@ LICENSE, AGENTS.md         repo root, not packed
 ## Known facts
 - Marx Core and COE2 both override the vanilla `Configs/Systems/ChimeraSystemsConfig.conf`. The overrides merge (verified in Play): both `MRX_MarxSystem` and `COE_EnemySupportSystem` run. The startup log line `[CTR] Systems config ...` reports both.
 - COE2's mission headers set no systems config, so Marx would keep everything in memory. The Contractors mission headers (`Missions/CTR_COE2_<Map>.conf`) use `CTR_Systems.conf`, whose persistence config holds only the Marx collections (no world state).
+- Floats compared against `float.INFINITY` (e.g. `Math.Min`) trip a BadFloat assertion in Workbench that blocks it with a dialog; use `float.MAX`.
+- Code run from a task state change (e.g. `OnAOFinished`) must not change another task's state in the same call (recursive `ScriptInvoker` call); defer it with `CallLater`.
 
 ## COE2 bug workarounds
 - Workarounds for COE2 bugs live in `Scripts/Game/Contractors/COE2Fixes/`, one file per bug group, each headed by the bug and where the upstream fix is proposed (`blackwaterbread/COE2_AR`, branch `fix-dedicated-client-issues`, PR to `Kexanone/COE2_AR`).
