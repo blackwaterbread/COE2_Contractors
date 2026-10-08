@@ -2,7 +2,7 @@
 //! - Only players who entered an AO are paid.
 //! - Every completed task pays its amount to every participant; failed tasks pay nothing.
 //! - Without a completed task there is no pay at all, so personal lines cannot pay on their own.
-//! - Personal lines: kills and heals add, team kills and deaths deduct. The total is never below 0.
+//! - Personal lines: kills and heals add, team kills, civilian kills and deaths deduct. The total is never below 0.
 //! - How the operation ended sets a percent of the earnings (tasks, kills, heals); deductions stay whole.
 class CTR_PayoutCalculator
 {
@@ -82,7 +82,7 @@ class CTR_PayoutCalculator
 	//! Sum of the lines, never below 0.
 	protected static int GetTotal(notnull CTR_Payout payout)
 	{
-		return Math.Max(0, payout.m_iTasks + payout.m_iKills + payout.m_iHeals + payout.m_iTeamKills + payout.m_iDeaths);
+		return Math.Max(0, payout.m_iTasks + payout.m_iKills + payout.m_iHeals + payout.m_iTeamKills + payout.m_iCivilianKills + payout.m_iDeaths);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -103,6 +103,7 @@ class CTR_PayoutCalculator
 		payout.m_iKills = stats.m_iKills * settings.m_iKillReward;
 		payout.m_iHeals = stats.m_iHeals * settings.m_iFriendlyHealReward;
 		payout.m_iTeamKills = -stats.m_iTeamKills * settings.m_iTeamKillPenalty;
+		payout.m_iCivilianKills = -stats.m_iCivilianKills * settings.m_iCivilianKillPenalty;
 		payout.m_iDeaths = -stats.m_iDeaths * settings.m_iDeathPenalty;
 	}
 

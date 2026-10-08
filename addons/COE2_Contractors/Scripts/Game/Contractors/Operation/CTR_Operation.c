@@ -290,13 +290,13 @@ class CTR_Operation : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! An AI character killed by a player: enemies pay, friendlies and civilians inside an AO cost like a team kill.
+	//! An AI character killed by a player: enemies pay, friendlies cost a team kill, civilians inside an AO a civilian kill.
 	static void AddAIKill(notnull CTR_PlayerStats stats, SCR_ECharacterDeathStatusRelations relation, bool civilian, bool inAO)
 	{
 		if (civilian)
 		{
 			if (inAO)
-				stats.m_iTeamKills++;
+				stats.m_iCivilianKills++;
 
 			return;
 		}

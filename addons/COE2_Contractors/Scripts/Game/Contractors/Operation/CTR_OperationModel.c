@@ -37,8 +37,10 @@ class CTR_PlayerStats : Managed
 	bool m_bEnteredAO;
 	//! Enemies killed: players, AI, run over.
 	int m_iKills;
-	//! Friendlies and civilians killed.
+	//! Friendlies killed.
 	int m_iTeamKills;
+	//! Civilians killed inside an AO.
+	int m_iCivilianKills;
 	int m_iDeaths;
 	//! Bandages, tourniquets, saline and morphine applied to others.
 	int m_iHeals;
@@ -55,6 +57,7 @@ class CTR_PlayerStats : Managed
 		m_bEnteredAO = m_bEnteredAO || other.m_bEnteredAO;
 		m_iKills += other.m_iKills;
 		m_iTeamKills += other.m_iTeamKills;
+		m_iCivilianKills += other.m_iCivilianKills;
 		m_iDeaths += other.m_iDeaths;
 		m_iHeals += other.m_iHeals;
 		m_iShots += other.m_iShots;
@@ -79,6 +82,7 @@ class CTR_Payout : Managed
 	int m_iTasks;
 	int m_iKills;
 	int m_iTeamKills;
+	int m_iCivilianKills;
 	int m_iDeaths;
 	int m_iHeals;
 	int m_iTotal;

@@ -306,6 +306,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddCountLine("#CTR-Result_Kills", stats.m_iKills, payout.m_iKills);
 		AddCountLine("#CTR-Result_Heals", stats.m_iHeals, payout.m_iHeals);
 		AddCountLine("#CTR-Result_TeamKills", stats.m_iTeamKills, payout.m_iTeamKills);
+		AddCountLine("#CTR-Result_CivilianKills", stats.m_iCivilianKills, payout.m_iCivilianKills);
 		AddCountLine("#CTR-Result_Deaths", stats.m_iDeaths, payout.m_iDeaths);
 	}
 

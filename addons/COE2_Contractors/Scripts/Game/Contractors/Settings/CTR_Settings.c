@@ -48,11 +48,14 @@ class CTR_Settings
 	[Attribute("6000", desc: "Pay for a completed task whose builder has no entry", params: "0 inf")]
 	int m_iDefaultTaskReward;
 
-	[Attribute("250", desc: "Per enemy killed (players, AI, run over)", params: "0 inf")]
+	[Attribute("15", desc: "Per enemy killed (players, AI, run over)", params: "0 inf")]
 	int m_iKillReward;
 
-	[Attribute("10000", desc: "Deducted per friendly or civilian killed", params: "0 inf")]
+	[Attribute("10000", desc: "Deducted per friendly killed", params: "0 inf")]
 	int m_iTeamKillPenalty;
+
+	[Attribute("1000", desc: "Deducted per civilian killed inside an AO", params: "0 inf")]
+	int m_iCivilianKillPenalty;
 
 	[Attribute("2500", desc: "Deducted per death", params: "0 inf")]
 	int m_iDeathPenalty;
@@ -163,8 +166,9 @@ class CTR_Settings
 		CTR_Settings settings = new CTR_Settings();
 		settings.m_sCurrency = MRX_Settings.DEFAULT_CURRENCY;
 		settings.m_iDefaultTaskReward = 6000;
-		settings.m_iKillReward = 250;
+		settings.m_iKillReward = 15;
 		settings.m_iTeamKillPenalty = 10000;
+		settings.m_iCivilianKillPenalty = 1000;
 		settings.m_iDeathPenalty = 2500;
 		settings.m_iFriendlyHealReward = 300;
 		settings.m_iCprRewardSeconds = 15;

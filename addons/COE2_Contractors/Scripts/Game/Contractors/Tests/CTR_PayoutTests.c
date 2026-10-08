@@ -101,6 +101,7 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckInt(loaded.m_iExfilEnemyWaves, settings.m_iExfilEnemyWaves, "config pursuit waves");
 		Check(loaded.m_fExfilPlayerRatio == settings.m_fExfilPlayerRatio, "config exfil ratio");
 		Check(loaded.m_fExfilMaxDistance == settings.m_fExfilMaxDistance, "config exfil max distance");
+		CheckInt(loaded.m_iCivilianKillPenalty, settings.m_iCivilianKillPenalty, "config civilian kill penalty");
 		Finish();
 	}
 }
@@ -117,11 +118,11 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		int tasks = 6000 + 8000 + 12000;
 		CTR_Payout payout = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10, 1, 1, 2));
 		CheckInt(payout.m_iTasks, tasks, "task line");
-		CheckInt(payout.m_iKills, 10 * 250, "kill line");
+		CheckInt(payout.m_iKills, 10 * 15, "kill line");
 		CheckInt(payout.m_iHeals, 2 * 300, "heal line");
 		CheckInt(payout.m_iTeamKills, -10000, "team kill line");
 		CheckInt(payout.m_iDeaths, -2500, "death line");
-		CheckInt(payout.m_iTotal, tasks + 2500 + 600 - 10000 - 2500, "total");
+		CheckInt(payout.m_iTotal, tasks + 150 + 600 - 10000 - 2500, "total");
 
 		CheckInt(CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(false, 10)).m_iTotal, 0, "never entered the AO");
 		CheckInt(CTR_PayoutCalculator.Calculate(settings, 0, CTR_PayoutTests.CreateStats(true, 10, 0, 0, 5)).m_iTotal, 0, "no completed task, no personal pay");
@@ -130,12 +131,19 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		CheckInt(negative.m_iTeamKills, -30000, "team kill line keeps its full value");
 		CheckInt(negative.m_iTotal, 0, "total is not negative");
 
+		CTR_PlayerStats civilianStats = CTR_PayoutTests.CreateStats(true);
+		civilianStats.m_iCivilianKills = 2;
+		CTR_Payout civilians = CTR_PayoutCalculator.Calculate(settings, 6000, civilianStats);
+		CheckInt(civilians.m_iCivilianKills, -2000, "civilian kill line");
+		CheckInt(civilians.m_iTeamKills, 0, "civilians are not team kills");
+		CheckInt(civilians.m_iTotal, 4000, "two civilians leave most of a task's pay");
+
 		CheckString(CTR_PayoutCalculator.GetIdempotencyKey("op1", "owner1"), "op:op1:owner1", "idempotency key");
 
 		// Live view of a running operation.
 		CTR_PlayerStats active = CTR_PayoutTests.CreateStats(true, 4, 0, 1, 2);
 		CTR_Payout soFar = CTR_PayoutCalculator.CalculateSoFar(settings, 0, active);
-		CheckInt(soFar.m_iKills, 4 * 250, "so far: kill line before a task is completed");
+		CheckInt(soFar.m_iKills, 4 * 15, "so far: kill line before a task is completed");
 		CheckInt(soFar.m_iHeals, 2 * 300, "so far: heal line before a task is completed");
 		CheckInt(soFar.m_iDeaths, -2500, "so far: death line before a task is completed");
 		CheckInt(soFar.m_iTotal, 0, "so far: nothing paid before a task is completed");
@@ -143,8 +151,8 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 0, CTR_PayoutTests.CreateStats(false, 4)).m_iKills, 0, "so far: no lines outside the AO");
 
 		// If the exfil succeeds.
-		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, active), 14000 + 1000 + 600 - 2500, "if success: tasks and personal lines");
-		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, CTR_PayoutTests.CreateStats(false, 4)), 14000 + 1000, "if success: counts as entering the AO");
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, active), 14000 + 60 + 600 - 2500, "if success: tasks and personal lines");
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, CTR_PayoutTests.CreateStats(false, 4)), 14000 + 60, "if success: counts as entering the AO");
 		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 0, active), 0, "if success: nothing without task pay");
 		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 6000, CTR_PayoutTests.CreateStats(true, 0, 1)), 0, "if success: not below 0");
 		Finish();
@@ -169,12 +177,12 @@ class CTR_Test_PayPercent : CTR_TestCase
 		int tasks = 6000 + 8000 + 12000;
 		CTR_Payout quarter = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10, 0, 0, 2), 25);
 		CheckInt(quarter.m_iTasks, tasks / 4, "25%: task line");
-		CheckInt(quarter.m_iKills, 10 * 250 / 4, "25%: kill line");
+		CheckInt(quarter.m_iKills, 10 * 15 / 4, "25%: kill line");
 		CheckInt(quarter.m_iHeals, 2 * 300 / 4, "25%: heal line");
-		CheckInt(quarter.m_iTotal, tasks / 4 + 625 + 150, "25%: total");
+		CheckInt(quarter.m_iTotal, tasks / 4 + 37 + 150, "25%: total");
 
 		CTR_Payout odd = CTR_PayoutCalculator.Calculate(settings, 6000, CTR_PayoutTests.CreateStats(true, 3), 25);
-		CheckInt(odd.m_iKills, 187, "25%: rounded down (750 -> 187)");
+		CheckInt(odd.m_iKills, 11, "25%: rounded down (45 -> 11)");
 
 		CTR_Payout deducted = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 0, 1, 1), 25);
 		CheckInt(deducted.m_iTeamKills, -10000, "25%: team kill deduction whole");
@@ -215,18 +223,18 @@ class CTR_Test_SettlementInProgress : CTR_TestCase
 		Check(result.m_bInProgress, "in progress");
 		Check(!result.m_bExfil, "before the exfil");
 		CheckInt(result.m_Stats.m_iKills, 3, "sessions merged");
-		CheckInt(result.m_Payout.m_iKills, 3 * 250, "kill line shown");
-		CheckInt(result.m_Payout.m_iTotal, 8000 + 3 * 250, "lines so far");
+		CheckInt(result.m_Payout.m_iKills, 3 * 15, "kill line shown");
+		CheckInt(result.m_Payout.m_iTotal, 8000 + 3 * 15, "lines so far");
 		CheckInt(result.m_ePayStatus, CTR_EPayStatus.NONE, "not paid");
 		CheckInt(result.m_aTasks[0].m_iReward, 6000, "reward of the open task");
-		CheckInt(result.m_iTotalIfSuccess, 6000 + 8000 + 3 * 250, "if success: every task still possible (the failed one does not count)");
+		CheckInt(result.m_iTotalIfSuccess, 6000 + 8000 + 3 * 15, "if success: every task still possible (the failed one does not count)");
 		CheckInt(result.m_iTeamPay, result.m_iTotalIfSuccess, "team if success: only those who entered");
 
 		CTR_Settlement exfil = CTR_Settlement.CreateInProgress(CTR_Settings.CreateDefault(), "op-live", true, 90, areas, tasks);
 		exfil.AddParticipants(participants);
 		CTR_OperationResult inExfil = exfil.BuildResult(1);
 		Check(inExfil.m_bExfil, "during the exfil");
-		CheckInt(inExfil.m_iTotalIfSuccess, 8000 + 3 * 250, "if success during the exfil: completed tasks only");
+		CheckInt(inExfil.m_iTotalIfSuccess, 8000 + 3 * 15, "if success during the exfil: completed tasks only");
 
 		CTR_OperationResult notEntered = exfil.BuildResult(2);
 		CheckInt(notEntered.m_iTotalIfSuccess, 8000, "if success: counts as entering the AO");
@@ -266,7 +274,7 @@ class CTR_Test_StatMapping : CTR_TestCase
 }
 
 //------------------------------------------------------------------------------------------------
-//! AI killed by a player: enemies are kills, friendlies team kills, civilians team kills only inside an AO.
+//! AI killed by a player: enemies are kills, friendlies team kills, civilians civilian kills only inside an AO.
 class CTR_Test_AIKills : CTR_TestCase
 {
 	//------------------------------------------------------------------------------------------------
@@ -282,10 +290,11 @@ class CTR_Test_AIKills : CTR_TestCase
 		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, true, true);
 		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER, true, true);
 		CheckInt(stats.m_iKills, 2, "a civilian never counts as a kill, whatever the faction relation");
-		CheckInt(stats.m_iTeamKills, 3, "civilians inside the AO cost like team kills");
+		CheckInt(stats.m_iTeamKills, 1, "civilians are not team kills");
+		CheckInt(stats.m_iCivilianKills, 2, "civilians inside the AO");
 
 		CTR_Operation.AddAIKill(stats, SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER, true, false);
-		CheckInt(stats.m_iTeamKills, 3, "civilians outside the AO cost nothing");
+		CheckInt(stats.m_iCivilianKills, 2, "civilians outside the AO cost nothing");
 		Finish();
 	}
 }
@@ -365,10 +374,10 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		CheckInt(a.m_iPayPercent, 100, "owner-a share");
 		CheckInt(a.m_Stats.m_iKills, 3, "sessions of owner-a merged");
 		Check(a.m_Stats.m_bEnteredAO, "owner-a entered in one session");
-		CheckInt(a.m_Payout.m_iTotal, 6000 + 3 * 250, "owner-a pay");
+		CheckInt(a.m_Payout.m_iTotal, 6000 + 3 * 15, "owner-a pay");
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.PAID, "owner-a status");
 		Check(a.m_bHasBalance, "owner-a balance known");
-		CheckInt(a.m_iBalance, 6750, "owner-a balance");
+		CheckInt(a.m_iBalance, 6045, "owner-a balance");
 
 		CTR_OperationResult b = settlement.BuildResult(2);
 		CheckInt(b.m_Payout.m_iTotal, 0, "owner-b did not enter");
@@ -381,7 +390,7 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		CTR_OperationResult stranger = settlement.BuildResult(99);
 		CheckInt(stranger.m_Payout.m_iTotal, 0, "player not in the operation");
 		CheckInt(stranger.m_iParticipants, 2, "participants");
-		CheckInt(stranger.m_iTeamPay, 6750 + 6000, "team pay");
+		CheckInt(stranger.m_iTeamPay, 6045 + 6000, "team pay");
 		CheckInt(stranger.CountCompletedTasks(), 1, "completed tasks");
 
 		m_Second = CreateSettlement(CTR_EOperationEnd.EARLY_EXFIL);
@@ -394,7 +403,7 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 	{
 		CTR_OperationResult a = settlement.BuildResult(1);
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.ALREADY_PAID, "second settlement of the same operation");
-		CheckInt(a.m_iBalance, 6750, "no second pay");
+		CheckInt(a.m_iBalance, 6045, "no second pay");
 
 		m_Cancelled = CreateSettlement(CTR_EOperationEnd.CANCELLED, "test-op-cancelled");
 		m_Cancelled.GetOnDone().Insert(OnCancelledDone);
@@ -407,9 +416,9 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		CTR_OperationResult a = settlement.BuildResult(1);
 		CheckInt(a.m_iPayPercent, 25, "cancelled: share");
 		CheckInt(a.m_Payout.m_iTasks, 1500, "cancelled: a quarter of the task");
-		CheckInt(a.m_Payout.m_iTotal, 1500 + 187, "cancelled: a quarter of the earnings");
+		CheckInt(a.m_Payout.m_iTotal, 1500 + 11, "cancelled: a quarter of the earnings");
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.PAID, "cancelled: owner-a paid");
-		CheckInt(a.m_iBalance, 6750 + 1687, "cancelled: balance");
+		CheckInt(a.m_iBalance, 6045 + 1511, "cancelled: balance");
 
 		m_Missing = CreateSettlement(CTR_EOperationEnd.MISSING, "test-op-missing");
 		m_Missing.GetOnDone().Insert(OnMissingDone);
@@ -424,7 +433,7 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		CheckInt(a.m_iPayPercent, 0, "missing: share");
 		CheckInt(a.m_Payout.m_iTotal, 0, "missing: nothing");
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.NONE, "missing: nothing to pay");
-		Check(!a.m_bHasBalance || a.m_iBalance == 6750 + 1687, "missing: balance unchanged");
+		Check(!a.m_bHasBalance || a.m_iBalance == 6045 + 1511, "missing: balance unchanged");
 
 		CTR_OperationResult b = settlement.BuildResult(2);
 		CheckInt(b.m_Payout.m_iTotal, 0, "owner-b did not enter");

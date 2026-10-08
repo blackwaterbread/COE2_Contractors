@@ -393,6 +393,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A90E567A9741191}" {
+   Id "CTR-Result_CivilianKills"
+   Target_en_us "Civilian kills"
+   Target_ko_kr "민간인 사살"
+   Modified 1787880817
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DDA6B86}" {
    Id "CTR-Result_Deaths"
    Target_en_us "Deaths"
@@ -635,8 +643,8 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DC52C48}" {
    Id "CTR-Result_TeamKills"
-   Target_en_us "Friendly or civilian kills"
-   Target_ko_kr "아군·민간인 사살"
+   Target_en_us "Friendly kills"
+   Target_ko_kr "아군 사살"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
