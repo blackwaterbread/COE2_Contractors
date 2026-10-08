@@ -4,7 +4,9 @@ enum CTR_EAlert
 	//! The commander cancelled the operation; everyone returns shortly.
 	CANCELLED,
 	//! The commander ordered the early exfil.
-	EARLY_EXFIL
+	EARLY_EXFIL,
+	//! A wave of enemy pursuers is coming; param = compass octant they come from (0 = north, clockwise).
+	PURSUIT
 }
 
 //------------------------------------------------------------------------------------------------
@@ -43,11 +45,23 @@ class CTR_AlertHud
 				title = "#CTR-Alert_EarlyExfil";
 				line = "#CTR-Alert_EarlyExfilLine";
 				break;
+			case CTR_EAlert.PURSUIT:
+				title = "#CTR-Alert_Pursuit";
+				line = WidgetManager.Translate("#CTR-Alert_PursuitLine", WidgetManager.Translate(GetDirectionKey(param)));
+				color = CTR_OperationTimerHud.GetAlarmColor();
+				break;
 		}
 
-		Build(hudManager.GetHUDRootWidget(), title, line, color);
+		string icon;
+		if (alert == CTR_EAlert.PURSUIT)
+			icon = CTR_OperationTimerHud.WARNING_ICON;
+
+		Build(hudManager.GetHUDRootWidget(), title, line, color, icon);
 		s_iLastAlert = alert;
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.HINT);
+		if (alert == CTR_EAlert.PURSUIT)
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_FAILED);
+		else
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.HINT);
 
 		GetGame().GetCallqueue().CallLater(Hide, SHOW_MS);
 	}
@@ -72,9 +86,25 @@ class CTR_AlertHud
 		return s_iLastAlert;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	static string GetDirectionKey(int octant)
+	{
+		switch (octant)
+		{
+			case 0: return "#CTR-Alert_North";
+			case 1: return "#CTR-Alert_NorthEast";
+			case 2: return "#CTR-Alert_East";
+			case 3: return "#CTR-Alert_SouthEast";
+			case 4: return "#CTR-Alert_South";
+			case 5: return "#CTR-Alert_SouthWest";
+			case 6: return "#CTR-Alert_West";
+		}
+
+		return "#CTR-Alert_NorthWest";
+	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static void Build(notnull Widget parent, string title, string line, Color color)
+	protected static void Build(notnull Widget parent, string title, string line, Color color, string icon)
 	{
 		s_wRoot = CreateWidget(WidgetType.OverlayWidgetTypeID, Color.FromInt(Color.WHITE), parent);
 		FrameSlot.SetAnchorMin(s_wRoot, 0.5, 0);
@@ -94,9 +124,13 @@ class CTR_AlertHud
 		Widget column = CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), s_wRoot);
 		AlignableSlot.SetPadding(column, 32, 10 + ACCENT_HEIGHT, 32, 12);
 
-		TextWidget titleText = CreateText(column, TITLE_FONT_SIZE, color);
+		Widget titleRow = CreateWidget(WidgetType.HorizontalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), column);
+		AlignableSlot.SetHorizontalAlign(titleRow, LayoutHorizontalAlign.Center);
+		if (!icon.IsEmpty())
+			CTR_OperationTimerHud.AddIcon(titleRow, icon, color, TITLE_FONT_SIZE);
+
+		TextWidget titleText = CreateText(titleRow, TITLE_FONT_SIZE, color);
 		titleText.SetText(title);
-		AlignableSlot.SetHorizontalAlign(titleText, LayoutHorizontalAlign.Center);
 
 		TextWidget lineText = CreateText(column, LINE_FONT_SIZE, Color.FromSRGBA(220, 222, 226, 255));
 		lineText.SetText(line);

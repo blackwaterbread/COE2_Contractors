@@ -26,6 +26,9 @@ class CTR_Operation : Managed
 	//! With the crimes module, stats arrive twice: first as temporary, later again when committed. Count the first.
 	protected bool m_bCountTemporaryStats;
 	protected ref map<int, ref CTR_Participant> m_mParticipants = new map<int, ref CTR_Participant>();
+	//! Civilians killed by players inside an AO, by the whole team: they raise the chance of an enemy pursuit.
+	protected int m_iCivilianKills;
+	protected ref ScriptInvokerVoid m_OnCivilianKilled = new ScriptInvokerVoid();
 
 	//------------------------------------------------------------------------------------------------
 	void CTR_Operation(string id)
@@ -100,6 +103,27 @@ class CTR_Operation : Managed
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		if (callQueue)
 			callQueue.Remove(Track);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetCivilianKills()
+	{
+		return m_iCivilianKills;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fires after a player killed a civilian inside an AO.
+	ScriptInvokerVoid GetOnCivilianKilled()
+	{
+		return m_OnCivilianKilled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Counts a civilian killed by a player inside an AO (also for dev tools).
+	void AddCivilianKill()
+	{
+		m_iCivilianKills++;
+		m_OnCivilianKilled.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,6 +285,8 @@ class CTR_Operation : Managed
 
 		CTR_Participant participant = GetOrAddParticipant(killerId, System.GetUnixTime());
 		AddAIKill(participant.m_Stats, context.GetVictimKillerRelation(), civilian, inAO);
+		if (civilian && inAO)
+			AddCivilianKill();
 	}
 
 	//------------------------------------------------------------------------------------------------

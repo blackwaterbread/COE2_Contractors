@@ -30,6 +30,20 @@ class CTR_ExfilRules
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Chance of an enemy pursuit after this many civilians were killed inside an AO.
+	static float GetPursuitChance(float baseChance, float perCivilian, int civilians)
+	{
+		return Math.Clamp(baseChance + perCivilian * Math.Max(0, civilians), 0, 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Pursuers in one wave for this many living players outside the base.
+	static int GetWaveSize(int outside, float perPlayer, int min, int max)
+	{
+		return Math.Clamp(Math.Round(outside * perPlayer), min, Math.Max(min, max));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Distance in the XZ plane from the edge of a circular AO; negative inside it.
 	static float GetEdgeDistance(vector pos, vector center, float radius)
 	{
@@ -57,5 +71,18 @@ class CTR_ExfilRules
 			return CTR_EExfilDistance.TOO_FAR;
 
 		return CTR_EExfilDistance.OK;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! One of eight compass directions (0 = north, clockwise) from one point to another in the XZ plane.
+	static int GetCompassOctant(vector from, vector to)
+	{
+		vector dir = to - from;
+		float yaw = Math.Atan2(dir[0], dir[2]) * Math.RAD2DEG;
+		if (yaw < 0)
+			yaw += 360;
+
+		int octant = Math.Round(yaw / 45);
+		return octant % 8;
 	}
 }

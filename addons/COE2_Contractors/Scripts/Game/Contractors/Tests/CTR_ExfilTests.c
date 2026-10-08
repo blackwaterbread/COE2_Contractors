@@ -6,6 +6,7 @@ class CTR_ExfilTests
 	{
 		runner.Add(new CTR_Test_ExfilNeeded());
 		runner.Add(new CTR_Test_ExfilDistance());
+		runner.Add(new CTR_Test_PursuitRules());
 	}
 }
 
@@ -57,6 +58,33 @@ class CTR_Test_ExfilDistance : CTR_TestCase
 
 		array<vector> none = {};
 		CheckInt(CTR_ExfilRules.CheckDistance("0 0 0", none, radius, 1000, 2000), CTR_EExfilDistance.OK, "no AO picked yet");
+		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Pursuit chance by civilians killed, wave size by players outside the base, compass directions.
+class CTR_Test_PursuitRules : CTR_TestCase
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		array<float> chances = {0.17, 0.34, 0.51, 0.68, 0.85, 1, 1};
+		foreach (int civilians, float chance : chances)
+		{
+			Check(Math.AbsFloat(CTR_ExfilRules.GetPursuitChance(0.17, 0.17, civilians) - chance) < 0.001, string.Format("chance after %1 civilians", civilians));
+		}
+
+		CheckInt(CTR_ExfilRules.GetWaveSize(1, 1.5, 8, 16), 8, "one player: at least 8");
+		CheckInt(CTR_ExfilRules.GetWaveSize(6, 1.5, 8, 16), 9, "six players");
+		CheckInt(CTR_ExfilRules.GetWaveSize(20, 1.5, 8, 16), 16, "at most 16");
+
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "0 0 100"), 0, "north");
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "100 0 100"), 1, "north-east");
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "100 0 0"), 2, "east");
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "0 0 -100"), 4, "south");
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "-100 0 0"), 6, "west");
+		CheckInt(CTR_ExfilRules.GetCompassOctant("0 0 0", "-10 0 100"), 0, "almost north");
 		Finish();
 	}
 }

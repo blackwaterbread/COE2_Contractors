@@ -56,6 +56,13 @@ modded class COE_GameMode
 	protected bool m_bCTR_Cancelling;
 	[RplProp()]
 	protected WorldTimestamp m_CTR_CancelReturn;
+	//! Waves of the enemy pursuit so far (0 = none came), and when the next one comes if one more is due.
+	[RplProp()]
+	protected int m_iCTR_PursuitWave;
+	[RplProp()]
+	protected bool m_bCTR_PursuitMore;
+	[RplProp()]
+	protected WorldTimestamp m_CTR_NextWave;
 
 	//! How the pay currency is shown on every machine; storage and the ledger keep the Marx currency ID.
 	protected static const string CTR_CURRENCY_FORMAT = "$%1";
@@ -263,6 +270,47 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Every machine: waves of the enemy pursuit so far during the exfil; 0 when none came.
+	int CTR_GetPursuitWave()
+	{
+		if (!m_bCTR_InExfil)
+			return 0;
+
+		return m_iCTR_PursuitWave;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Every machine: when the next pursuit wave comes; null when no more are due.
+	WorldTimestamp CTR_GetNextWave()
+	{
+		if (!m_bCTR_InExfil || !m_bCTR_PursuitMore)
+			return null;
+
+		return m_CTR_NextWave;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server, from CTR_Pursuit.
+	void CTR_SetPursuitWave(int wave, bool more, int waveSeconds)
+	{
+		m_iCTR_PursuitWave = wave;
+		m_bCTR_PursuitMore = more;
+		if (more)
+			m_CTR_NextWave = CTR_GetTimeIn(waveSeconds);
+
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: a player killed a civilian inside an AO. During the exfil the pursuit is rolled again, with the higher
+	//! chance, until one came.
+	protected void CTR_OnCivilianKilled()
+	{
+		if (m_CTR_Exfil && m_CTR_Operation && m_CTR_Exfil.GetPursuit())
+			m_CTR_Exfil.GetPursuit().Roll(m_CTR_Operation.GetCivilianKills());
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Every machine: seconds from now until the time, negative when it passed. 0 without a time.
 	static float CTR_SecondsUntil(WorldTimestamp time)
 	{
@@ -325,6 +373,7 @@ modded class COE_GameMode
 		m_bCTR_ExfilPointLocked = false;
 
 		m_CTR_Operation = new CTR_Operation(MRX_Marx.NewId());
+		m_CTR_Operation.GetOnCivilianKilled().Insert(CTR_OnCivilianKilled);
 		m_CTR_Operation.StartTracking();
 
 		m_bCTR_HasOperation = true;
@@ -424,6 +473,7 @@ modded class COE_GameMode
 		m_CTR_Exfil = new CTR_Exfil(pos, settings);
 		m_CTR_Exfil.Start();
 		Print(string.Format("[CTR] Operation %1: exfil started (%2) at %3, %4 s", m_CTR_Operation.GetId(), CTR_GetExfilWord(early), pos, settings.m_iExfilCountdownSeconds));
+		m_CTR_Exfil.GetPursuit().Roll(m_CTR_Operation.GetCivilianKills());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -729,6 +779,8 @@ modded class COE_GameMode
 
 		m_bCTR_InExfil = false;
 		m_bCTR_ExfilHolding = false;
+		m_iCTR_PursuitWave = 0;
+		m_bCTR_PursuitMore = false;
 		Replication.BumpMe();
 	}
 

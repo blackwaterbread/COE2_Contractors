@@ -10,12 +10,14 @@
 //!   #ctr exfilnow  the exfil succeeds now
 //!   #ctr mia       the exfil countdown runs out now (missing in action)
 //!   #ctr cd <s>    set the exfil countdown to s seconds
+//!   #ctr pursuit   the enemy pursuit starts now (first wave)
+//!   #ctr civ       count a civilian killed in the AO (rolls the pursuit again during the exfil)
 //!   #ctr base      move next to the base arsenal shops
 //!   #ctr cash [n]  credit n cash to yourself (default 1000)
 class CTR_DevCommand : ScrServerCommand
 {
 	static const string KEYWORD = "ctr";
-	protected static const string HELP = "#ctr ao [tasks] | go | win | fail | cancel | early | exfil | exfilnow | mia | cd <s> | base | cash [amount]";
+	protected static const string HELP = "#ctr ao [tasks] | go | win | fail | cancel | early | exfil | exfilnow | mia | cd <s> | pursuit | civ | base | cash [amount]";
 	protected static const int DEFAULT_TASKS = 2;
 	protected static const int DEFAULT_CASH = 1000;
 
@@ -73,6 +75,8 @@ class CTR_DevCommand : ScrServerCommand
 			case "exfilnow": return ExfilNow();
 			case "mia": return SetCountdown(0);
 			case "cd": return SetCountdown(amount);
+			case "pursuit": return StartPursuit();
+			case "civ": return AddCivilianKill();
 			case "base": return Base(playerId);
 			case "cash": return Cash(playerId, amount);
 		}
@@ -155,6 +159,32 @@ class CTR_DevCommand : ScrServerCommand
 
 		gameMode.CTR_OnExfilReached();
 		return Result("exfil reached", true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult StartPursuit()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_GetExfil())
+			return Result("no exfil running (#ctr win or #ctr early)", false);
+
+		CTR_Pursuit pursuit = gameMode.CTR_GetExfil().GetPursuit();
+		if (pursuit.IsStarted())
+			return Result(string.Format("the pursuit runs already (wave %1)", pursuit.GetWave()), false);
+
+		pursuit.Start();
+		return Result("pursuit started", true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult AddCivilianKill()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_GetOperation() || gameMode.CTR_GetOperation().IsClosed())
+			return Result("no operation running", false);
+
+		gameMode.CTR_GetOperation().AddCivilianKill();
+		return Result(string.Format("%1 civilians killed in the AO", gameMode.CTR_GetOperation().GetCivilianKills()), true);
 	}
 
 	//------------------------------------------------------------------------------------------------

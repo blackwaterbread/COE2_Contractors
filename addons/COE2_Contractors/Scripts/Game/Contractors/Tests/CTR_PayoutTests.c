@@ -98,6 +98,7 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckInt(loaded.m_iExfilCountdownSeconds, settings.m_iExfilCountdownSeconds, "config exfil countdown");
 		CheckInt(loaded.m_iCancelPayPercent, settings.m_iCancelPayPercent, "config cancel percent");
 		CheckInt(loaded.m_iCancelReturnSeconds, settings.m_iCancelReturnSeconds, "config cancel return");
+		CheckInt(loaded.m_iExfilEnemyWaves, settings.m_iExfilEnemyWaves, "config pursuit waves");
 		Check(loaded.m_fExfilPlayerRatio == settings.m_fExfilPlayerRatio, "config exfil ratio");
 		Check(loaded.m_fExfilMaxDistance == settings.m_fExfilMaxDistance, "config exfil max distance");
 		Finish();

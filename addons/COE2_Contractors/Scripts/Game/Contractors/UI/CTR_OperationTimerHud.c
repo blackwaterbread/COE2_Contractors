@@ -1,18 +1,21 @@
 //! Operation timer at the top left of the HUD while an operation runs (client), in the look of the Marx balance panel:
-//! operation time, the exfil countdown, players at the exfil point, the hold before the return and the return after
-//! the commander cancelled. Rows show only when they apply. Reads the replicated state of the game mode; times are
-//! server timestamps, so every machine shows the same.
+//! operation time, the exfil countdown, players at the exfil point, the hold before the return, the return after the
+//! commander cancelled, and the enemy pursuit. Rows show only when they apply. Reads the replicated state of the game
+//! mode; times are server timestamps, so every machine shows the same.
 class CTR_OperationTimerHud : Managed
 {
 	protected static const int UPDATE_MS = 250;
 	protected static const float MARGIN = 24;
-	protected static const float WIDTH = 330;
+	protected static const float WIDTH = 390;
 	protected static const ResourceName BOLD_FONT = "{EABA4FE9D014CCEF}UI/Fonts/RobotoCondensed/RobotoCondensed_Bold.fnt";
 	protected static const int TITLE_FONT_SIZE = 16;
 	protected static const int VALUE_FONT_SIZE = 24;
 	protected static const float ACCENT_WIDTH = 4;
 	//! The exfil countdown turns red in its last minute.
 	protected static const int URGENT_SECONDS = 60;
+	static const ResourceName ICONS = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
+	static const string WARNING_ICON = "warning";
+	protected static const float ICON_SIZE = 18;
 
 	protected Widget m_wRoot;
 	protected ref CTR_TimerRow m_OperationRow;
@@ -20,6 +23,7 @@ class CTR_OperationTimerHud : Managed
 	protected ref CTR_TimerRow m_PresentRow;
 	protected ref CTR_TimerRow m_HoldRow;
 	protected ref CTR_TimerRow m_CancelRow;
+	protected ref CTR_TimerRow m_PursuitRow;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return Null before the vanilla HUD exists.
@@ -61,7 +65,7 @@ class CTR_OperationTimerHud : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Text of a row as shown, for tests: "operation", "exfil", "present", "hold", "cancel". Empty when hidden.
+	//! Text of a row as shown, for tests: "operation", "exfil", "present", "hold", "cancel", "pursuit". Empty when hidden.
 	string GetRowText(string row)
 	{
 		CTR_TimerRow timerRow;
@@ -72,6 +76,7 @@ class CTR_OperationTimerHud : Managed
 			case "present": timerRow = m_PresentRow; break;
 			case "hold": timerRow = m_HoldRow; break;
 			case "cancel": timerRow = m_CancelRow; break;
+			case "pursuit": timerRow = m_PursuitRow; break;
 		}
 
 		if (!IsShown() || !timerRow || !timerRow.IsShown())
@@ -124,6 +129,25 @@ class CTR_OperationTimerHud : Managed
 		m_CancelRow.SetShown(cancelReturn != null);
 		if (cancelReturn)
 			m_CancelRow.Set(CTR_ResultDialog.FormatDuration(Math.Max(0, Math.Ceil(COE_GameMode.CTR_SecondsUntil(cancelReturn)))), GetAccentColor());
+
+		UpdatePursuit(gameMode);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The pursuit shows only once its first wave came: its chance is never shown.
+	protected void UpdatePursuit(notnull COE_GameMode gameMode)
+	{
+		int wave = gameMode.CTR_GetPursuitWave();
+		m_PursuitRow.SetShown(wave > 0);
+		if (wave <= 0)
+			return;
+
+		WorldTimestamp next = gameMode.CTR_GetNextWave();
+		string text = WidgetManager.Translate("#CTR-Timer_PursuitLast", wave);
+		if (next)
+			text = WidgetManager.Translate("#CTR-Timer_PursuitValue", wave, CTR_ResultDialog.FormatDuration(Math.Max(0, Math.Ceil(COE_GameMode.CTR_SecondsUntil(next)))));
+
+		m_PursuitRow.Set(text, GetAlarmColor());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -156,14 +180,18 @@ class CTR_OperationTimerHud : Managed
 		m_PresentRow = AddRow(column, "#CTR-Timer_Present", GetAccentColor());
 		m_HoldRow = AddRow(column, "#CTR-Timer_Hold", GetGoColor());
 		m_CancelRow = AddRow(column, "#CTR-Timer_Cancel", GetAccentColor());
+		m_PursuitRow = AddRow(column, "#CTR-Timer_Pursuit", GetAlarmColor(), WARNING_ICON);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected CTR_TimerRow AddRow(notnull Widget column, string title, Color titleColor)
+	protected CTR_TimerRow AddRow(notnull Widget column, string title, Color titleColor, string icon = string.Empty)
 	{
 		Widget row = CreateWidget(WidgetType.HorizontalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), column);
 		AlignableSlot.SetHorizontalAlign(row, LayoutHorizontalAlign.Stretch);
 		AlignableSlot.SetPadding(row, 0, 2, 0, 2);
+
+		if (!icon.IsEmpty())
+			AddIcon(row, icon, titleColor, ICON_SIZE);
 
 		TextWidget titleText = CreateText(row, TITLE_FONT_SIZE, titleColor);
 		titleText.SetText(title);
@@ -178,6 +206,21 @@ class CTR_OperationTimerHud : Managed
 		timerRow.m_wRow = row;
 		timerRow.m_wValue = valueText;
 		return timerRow;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! An icon of the vanilla UI imageset before a text in a horizontal layout.
+	static ImageWidget AddIcon(notnull Widget row, string icon, Color color, float size)
+	{
+		// Blended, or the transparent part of the icon shows black.
+		int flags = WidgetFlags.VISIBLE | WidgetFlags.BLEND | WidgetFlags.STRETCH | WidgetFlags.IGNORE_CURSOR | WidgetFlags.NOFOCUS;
+		ImageWidget image = ImageWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, flags, color, 0, row));
+		image.LoadImageFromSet(0, ICONS, icon);
+		image.SetImage(0);
+		image.SetSize(size, size);
+		AlignableSlot.SetVerticalAlign(image, LayoutVerticalAlign.Center);
+		AlignableSlot.SetPadding(image, 0, 0, 6, 0);
+		return image;
 	}
 
 	//------------------------------------------------------------------------------------------------

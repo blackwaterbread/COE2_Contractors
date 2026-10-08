@@ -15,6 +15,7 @@ class CTR_Exfil : Managed
 	//! Owners who left the game outside the base during the exfil, and the bodies they left (weak, same index).
 	protected ref array<string> m_aLeftOwners = {};
 	protected ref array<IEntity> m_aLeftBodies = {};
+	protected ref CTR_Pursuit m_Pursuit;
 
 	//------------------------------------------------------------------------------------------------
 	void CTR_Exfil(vector pos, notnull CTR_Settings settings)
@@ -23,6 +24,13 @@ class CTR_Exfil : Managed
 		m_fRadius = settings.m_fExfilRadius;
 		m_fRatio = settings.m_fExfilPlayerRatio;
 		m_iHoldSeconds = settings.m_iExfilHoldSeconds;
+		m_Pursuit = new CTR_Pursuit(pos, settings);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	CTR_Pursuit GetPursuit()
+	{
+		return m_Pursuit;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -45,8 +53,12 @@ class CTR_Exfil : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Stops the checks and the pursuit's waves.
 	void Stop()
 	{
+		if (m_Pursuit)
+			m_Pursuit.Stop();
+
 		// The call queue is gone when the game shuts down.
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		if (callQueue)

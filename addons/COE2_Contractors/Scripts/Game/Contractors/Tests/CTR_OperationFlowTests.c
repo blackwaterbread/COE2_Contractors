@@ -11,6 +11,7 @@ class CTR_OperationFlowTests
 		runner.Add(new CTR_Test_ExfilAbandoned());
 		runner.Add(new CTR_Test_EarlyExfil());
 		runner.Add(new CTR_Test_EarlyExfilTasksDone());
+		runner.Add(new CTR_Test_ExfilPursuit());
 		runner.Add(new CTR_Test_AllTasksFailed());
 		// Last: the host dies.
 		runner.Add(new CTR_Test_ExfilMissing());
@@ -34,6 +35,8 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	//! Shipped values, put back after each test.
 	protected static int s_iConfiguredHoldSeconds = -1;
 	protected static int s_iConfiguredCancelSeconds = -1;
+	protected static float s_fConfiguredChance;
+	protected static float s_fConfiguredChancePerCivilian;
 
 	protected COE_GameMode m_GameMode;
 	protected int m_iPlayerId;
@@ -57,6 +60,19 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Pursuit chances in the test: none unless the test wants one.
+	protected float GetPursuitChance()
+	{
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetPursuitChancePerCivilian()
+	{
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
 		CTR_Settings settings = CTR_Settings.Get();
@@ -64,10 +80,15 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		{
 			s_iConfiguredHoldSeconds = settings.m_iExfilHoldSeconds;
 			s_iConfiguredCancelSeconds = settings.m_iCancelReturnSeconds;
+			s_fConfiguredChance = settings.m_fExfilEnemyChance;
+			s_fConfiguredChancePerCivilian = settings.m_fExfilEnemyChancePerCivilian;
 		}
 
 		settings.m_iExfilHoldSeconds = TEST_HOLD_SECONDS;
 		settings.m_iCancelReturnSeconds = TEST_CANCEL_SECONDS;
+		// A pursuit only where a test wants one.
+		settings.m_fExfilEnemyChance = GetPursuitChance();
+		settings.m_fExfilEnemyChancePerCivilian = GetPursuitChancePerCivilian();
 		m_GameMode = COE_GameMode.GetInstance();
 		if (!m_GameMode)
 		{
@@ -484,6 +505,8 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		{
 			CTR_Settings.Get().m_iExfilHoldSeconds = s_iConfiguredHoldSeconds;
 			CTR_Settings.Get().m_iCancelReturnSeconds = s_iConfiguredCancelSeconds;
+			CTR_Settings.Get().m_fExfilEnemyChance = s_fConfiguredChance;
+			CTR_Settings.Get().m_fExfilEnemyChancePerCivilian = s_fConfiguredChancePerCivilian;
 		}
 
 		super.Finish();
@@ -741,6 +764,78 @@ class CTR_Test_EarlyExfilTasksDone : CTR_Test_EarlyExfil
 		CheckInt(result.m_eEnd, CTR_EOperationEnd.COMPLETE, "complete: every task finished at the exfil");
 		CheckInt(result.CountCompletedTasks(), 1, "the task completed during the exfil");
 		CheckInt(result.m_Payout.m_iTasks, m_iExpectedPay, "the task pays");
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! No pursuit when the exfil starts (chance 0 without civilians killed); a civilian killed in the AO during the exfil
+//! rolls again with a sure chance: the first wave is announced and spawns behind the host, big enough to run from, and
+//! chases. Another civilian killed rolls no second pursuit. After the exfil the pursuers are gone with the AO.
+class CTR_Test_ExfilPursuit : CTR_Test_OperationFlow
+{
+	protected ref array<AIGroup> m_aPursuers = {};
+
+	//------------------------------------------------------------------------------------------------
+	override protected float GetPursuitChancePerCivilian()
+	{
+		return 1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DuringExfil()
+	{
+		CTR_Pursuit pursuit = m_GameMode.CTR_GetExfil().GetPursuit();
+		Check(!pursuit.IsStarted() && m_GameMode.CTR_GetPursuitWave() == 0, "no pursuit without civilians killed");
+		CheckTimerRow("pursuit", false);
+
+		m_GameMode.CTR_GetOperation().AddCivilianKill();
+		Check(pursuit.IsStarted(), "a civilian killed during the exfil rolls the pursuit again");
+		CheckInt(m_GameMode.CTR_GetPursuitWave(), 1, "first wave announced");
+		Check(m_GameMode.CTR_GetNextWave() != null, "more waves due");
+		CheckInt(CTR_AlertHud.GetShownAlert(), CTR_EAlert.PURSUIT, "pursuit alert shown");
+		GetGame().GetCallqueue().CallLater(CheckWave, 12000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckWave()
+	{
+		CTR_Pursuit pursuit = m_GameMode.CTR_GetExfil().GetPursuit();
+		CheckTimerRow("pursuit", true);
+		m_aPursuers.Copy(pursuit.GetGroups());
+		Check(!m_aPursuers.IsEmpty(), "pursuers spawned");
+
+		int expected = CTR_ExfilRules.GetWaveSize(1, CTR_Settings.Get().m_fExfilEnemyPerPlayer, CTR_Settings.Get().m_iExfilEnemyMin, CTR_Settings.Get().m_iExfilEnemyMax);
+		Check(pursuit.CountAlive() >= expected, string.Format("wave of at least %1 AI: %2", expected, pursuit.CountAlive()));
+
+		SCR_ChimeraCharacter character = GetCharacter();
+		if (character)
+		{
+			float distance = vector.DistanceXZ(character.GetOrigin(), pursuit.GetLastSpawn());
+			Check(distance >= 150 && distance <= CTR_Settings.Get().m_fExfilEnemyMaxDistance + 40, "wave close behind the host: " + distance);
+		}
+
+		foreach (AIGroup group : m_aPursuers)
+		{
+			array<AIWaypoint> waypoints = {};
+			if (group)
+				group.GetWaypoints(waypoints);
+
+			CheckInt(waypoints.Count(), 1, "pursuers chase with one waypoint");
+		}
+
+		m_GameMode.CTR_GetOperation().AddCivilianKill();
+		CheckInt(pursuit.GetWave(), 1, "no second pursuit");
+		super.DuringExfil();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void CheckReturnedHost()
+	{
+		super.CheckReturnedHost();
+		foreach (AIGroup group : m_aPursuers)
+		{
+			Check(group == null, "pursuers removed with the AO");
+		}
 	}
 }
 

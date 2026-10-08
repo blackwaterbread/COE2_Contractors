@@ -96,6 +96,36 @@ class CTR_Settings
 	[Attribute("15", desc: "Seconds between the commander cancelling the operation and the return to base", params: "0 120", category: "Exfil")]
 	int m_iCancelReturnSeconds;
 
+	[Attribute("0.17", desc: "Chance of an enemy pursuit when the exfil starts", params: "0 1", category: "Pursuit")]
+	float m_fExfilEnemyChance;
+
+	[Attribute("0.17", desc: "Chance added per civilian killed by players inside an AO during the operation (up to 1)", params: "0 1", category: "Pursuit")]
+	float m_fExfilEnemyChancePerCivilian;
+
+	[Attribute("1.5", desc: "Pursuers per living player outside the base, per wave", params: "0 10", category: "Pursuit")]
+	float m_fExfilEnemyPerPlayer;
+
+	[Attribute("8", desc: "Least pursuers per wave", params: "0 100", category: "Pursuit")]
+	int m_iExfilEnemyMin;
+
+	[Attribute("16", desc: "Most pursuers per wave", params: "0 100", category: "Pursuit")]
+	int m_iExfilEnemyMax;
+
+	[Attribute("3", desc: "Most waves of one pursuit", params: "1 10", category: "Pursuit")]
+	int m_iExfilEnemyWaves;
+
+	[Attribute("180", desc: "Seconds between pursuit waves", params: "10 1800", category: "Pursuit")]
+	int m_iExfilEnemyWaveSeconds;
+
+	[Attribute("200", desc: "Least distance of a wave from the nearest player, in meters", params: "50 2000", category: "Pursuit")]
+	float m_fExfilEnemyMinDistance;
+
+	[Attribute("350", desc: "Most distance of a wave from the nearest player, in meters", params: "50 2000", category: "Pursuit")]
+	float m_fExfilEnemyMaxDistance;
+
+	[Attribute("20", desc: "Seconds between pursuers turning towards the nearest player", params: "5 120", category: "Pursuit")]
+	int m_iExfilEnemyRetargetSeconds;
+
 	[Attribute(desc: "Gear every player respawns with, whatever the role: clothing, weapons, then the rest. It is issued: shops and loadouts give it no value. Empty = the built-in kit (CTR_StarterKit).", params: "et")]
 	ref array<ResourceName> m_aStarterKit;
 
@@ -146,6 +176,16 @@ class CTR_Settings
 		settings.m_iExfilCancelPayPercent = 0;
 		settings.m_iMiaPayPercent = 0;
 		settings.m_iCancelReturnSeconds = 15;
+		settings.m_fExfilEnemyChance = 0.17;
+		settings.m_fExfilEnemyChancePerCivilian = 0.17;
+		settings.m_fExfilEnemyPerPlayer = 1.5;
+		settings.m_iExfilEnemyMin = 8;
+		settings.m_iExfilEnemyMax = 16;
+		settings.m_iExfilEnemyWaves = 3;
+		settings.m_iExfilEnemyWaveSeconds = 180;
+		settings.m_fExfilEnemyMinDistance = 200;
+		settings.m_fExfilEnemyMaxDistance = 350;
+		settings.m_iExfilEnemyRetargetSeconds = 20;
 		settings.m_fSafeZoneRadius = 75;
 		settings.m_aTaskRewards = {
 			CTR_TaskReward.Create("COE_ClearAreaTaskBuilder", 6000),
