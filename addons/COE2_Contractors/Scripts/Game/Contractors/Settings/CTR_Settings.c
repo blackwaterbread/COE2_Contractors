@@ -93,6 +93,9 @@ class CTR_Settings
 	[Attribute("0", desc: "Percent of the earnings paid when the exfil countdown runs out (missing in action)", params: "0 100", category: "Exfil")]
 	int m_iMiaPayPercent;
 
+	[Attribute("15", desc: "Seconds the players missing in action are held behind the result screen, with the enemies around them standing down, before they die", params: "0 120", category: "Exfil")]
+	int m_iMiaDeathSeconds;
+
 	[Attribute("15", desc: "Seconds between the commander cancelling the operation and the return to base", params: "0 120", category: "Exfil")]
 	int m_iCancelReturnSeconds;
 
@@ -175,6 +178,7 @@ class CTR_Settings
 		settings.m_iCancelPayPercent = 25;
 		settings.m_iExfilCancelPayPercent = 0;
 		settings.m_iMiaPayPercent = 0;
+		settings.m_iMiaDeathSeconds = 15;
 		settings.m_iCancelReturnSeconds = 15;
 		settings.m_fExfilEnemyChance = 0.17;
 		settings.m_fExfilEnemyChancePerCivilian = 0.17;

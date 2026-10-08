@@ -128,6 +128,10 @@ modded class COE_PlayerController
 		Print(string.Format("[CTR] Operation result received: %1, pay %2, status %3", result.m_sOperationId, result.m_Payout.m_iTotal, typename.EnumToString(CTR_EPayStatus, result.m_ePayStatus)));
 		CTR_GetOnOperationResult().Invoke(result);
 		CTR_ResultDialog.Open(result);
+
+		// Missing in action: held behind the result screen, a driver cannot steer any more.
+		if (result.m_bMissing && CTR_MissingInAction.StopDrivenVehicle(GetControlledEntity()))
+			Print("[CTR] Missing in action: the driven vehicle stopped");
 	}
 
 	//------------------------------------------------------------------------------------------------

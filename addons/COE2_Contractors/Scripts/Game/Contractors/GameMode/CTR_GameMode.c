@@ -1,7 +1,8 @@
 //! Operations end with an exfil judged by Contractors, and pay:
 //! AO generated -> operation tracked -> every task finished (or the commander orders an early exfil) -> exfil: hold the
 //! exfil point before the countdown runs out -> pay -> everyone returns to base -> result screen.
-//! - The countdown running out is missing in action: no pay, and every living player outside the base dies.
+//! - The countdown running out is missing in action: no pay, and every living player outside the base is held behind
+//!   the result screen for a few seconds, then dies.
 //! - The commander can cancel: part of the pay before the exfil, nothing during it; everyone returns after a short delay.
 //! - When every task failed there is nothing to exfil for: everyone returns at once.
 modded class COE_GameMode
@@ -25,6 +26,9 @@ modded class COE_GameMode
 	//! Server: the result screens are sent once the pay is done and the AO has ended.
 	protected bool m_bCTR_ResultPending;
 	protected bool m_bCTR_AOEnded;
+	//! Server: the players missing in action, from the end of the exfil countdown until the AO ends, and when they die.
+	protected ref CTR_MissingInAction m_CTR_Missing;
+	protected WorldTimestamp m_CTR_MissingDeath;
 	//! Server: characters killed missing in action (weak); the AO ends once they are dead.
 	protected ref array<IEntity> m_aCTR_Dying = {};
 	protected int m_iCTR_DyingWaitedMs;
@@ -129,6 +133,9 @@ modded class COE_GameMode
 	{
 		if (m_CTR_Exfil)
 			m_CTR_Exfil.OnPlayerLeaving(playerId, m_vMainBasePos);
+
+		if (m_CTR_Missing)
+			m_CTR_Missing.OnPlayerLeaving(playerId);
 
 		if (m_CTR_LastGear)
 			m_CTR_LastGear.OnPlayerLeaving(playerId);
@@ -402,6 +409,7 @@ modded class COE_GameMode
 
 		CTR_StopExfil();
 		CTR_StopCancel();
+		CTR_StopMissing();
 		m_bCTR_ResultPending = false;
 		m_bCTR_AOEnded = false;
 		m_bCTR_ExfilPointLocked = false;
@@ -599,22 +607,57 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Server, from CTR_Exfil: the exfil countdown ran out. Missing in action: every living player outside the base dies,
-	//! then the AO ends.
+	//! Server, from CTR_Exfil: the exfil countdown ran out. Missing in action: every living player outside the base gets
+	//! the result screen at once and cannot close it, the enemies around them stand down, and after a few seconds they
+	//! die; then the AO ends.
 	void CTR_OnExfilTimeout()
 	{
-		CTR_Exfil exfil = m_CTR_Exfil;
+		CTR_StopMissing();
+		m_CTR_Missing = new CTR_MissingInAction();
+		m_CTR_Missing.CollectPlayers(m_vMainBasePos);
+		if (m_CTR_Exfil)
+			m_CTR_Exfil.HandOverLeft(m_CTR_Missing);
+
+		int seconds = CTR_Settings.Get().m_iMiaDeathSeconds;
+		m_CTR_MissingDeath = CTR_GetTimeIn(seconds);
+		int stoodDown = m_CTR_Missing.StandDownEnemies();
+		Print(string.Format("[CTR] Missing in action: %1 players die in %2 s, %3 enemy AI stood down", m_CTR_Missing.CountMissing(), seconds, stoodDown));
+
+		// The results go out as soon as the pay is done (CTR_TrySendResults), before the AO ends.
 		CTR_EndOperation(CTR_EOperationEnd.MISSING);
 		if (m_ExfilTask)
 			m_ExfilTask.SetTaskState(SCR_ETaskState.FAILED);
 
+		GetGame().GetCallqueue().CallLater(CTR_KillMissing, seconds * 1000);
+		CTR_TrySendResults();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: the missing players' time is up.
+	protected void CTR_KillMissing()
+	{
+		if (!m_CTR_Missing)
+			return;
+
 		m_aCTR_Dying.Clear();
-		if (exfil)
-			exfil.KillMissing(m_vMainBasePos, m_CTR_LastGear, m_aCTR_Dying);
+		m_CTR_Missing.Kill(m_vMainBasePos, m_CTR_LastGear, m_aCTR_Dying);
 
 		// COE2 moves and heals everyone who is not dead when the AO ends; ACE may take a moment.
 		m_iCTR_DyingWaitedMs = 0;
 		CTR_WaitForDeaths();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: the AO ended (or a new one started) before or after the missing players died; the AI that stood down
+	//! and is left wakes up.
+	protected void CTR_StopMissing()
+	{
+		GetGame().GetCallqueue().Remove(CTR_KillMissing);
+		if (m_CTR_Missing)
+			m_CTR_Missing.Release();
+
+		m_CTR_Missing = null;
+		m_CTR_MissingDeath = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -771,6 +814,7 @@ modded class COE_GameMode
 		int moved = CTR_ReturnTrip.MoveVehicles(m_aCTR_ReturningVehicles, m_vMainBasePos);
 
 		super.DeleteAO();
+		CTR_StopMissing();
 		m_bCTR_Returning = false;
 		m_aCTR_ReturningVehicles.Clear();
 		if (moved > 0)
@@ -890,10 +934,20 @@ modded class COE_GameMode
 
 	//------------------------------------------------------------------------------------------------
 	//! The result screens wait for both the pay and the end of the AO: a cancelled operation is paid before everyone
-	//! returns, a finished one after.
+	//! returns, a finished one after. Missing in action they come at once: the missing players are held behind them.
 	protected void CTR_TrySendResults()
 	{
-		if (!m_bCTR_ResultPending || !m_bCTR_AOEnded || !m_CTR_Settlement || !m_CTR_Settlement.IsDone())
+		if (!m_bCTR_ResultPending || !m_CTR_Settlement || !m_CTR_Settlement.IsDone())
+			return;
+
+		if (m_CTR_Missing)
+		{
+			m_bCTR_ResultPending = false;
+			CTR_SendResults();
+			return;
+		}
+
+		if (!m_bCTR_AOEnded)
 			return;
 
 		m_bCTR_ResultPending = false;
@@ -911,8 +965,17 @@ modded class COE_GameMode
 		foreach (int playerId : playerIds)
 		{
 			COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
-			if (controller)
-				controller.CTR_SendOperationResult(m_CTR_Settlement.BuildResult(playerId).ToJson());
+			if (!controller)
+				continue;
+
+			CTR_OperationResult result = m_CTR_Settlement.BuildResult(playerId);
+			if (m_CTR_Missing && m_CTR_Missing.IsMissing(playerId))
+			{
+				result.m_bMissing = true;
+				result.m_fMissingSeconds = Math.Max(0, CTR_SecondsUntil(m_CTR_MissingDeath));
+			}
+
+			controller.CTR_SendOperationResult(result.ToJson());
 		}
 	}
 

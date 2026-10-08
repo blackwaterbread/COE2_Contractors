@@ -1,6 +1,7 @@
 //! Operation screen (client): earnings, personal stats, the operation's tasks with their grid position and outcome,
 //! and team totals. While the operation runs it shows the earnings so far and the pay if the exfil succeeds; after it,
 //! how it ended and what was paid. The screen stays until it is closed.
+//! Missing in action it holds the player: it cannot be closed and counts down to their death, then closes.
 class CTR_ResultDialog : MRX_ScriptedDialog
 {
 	protected static const string DIALOG_TAG = "CTR_Result";
@@ -14,6 +15,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static const int COLOR_LOSS = 0xFFE06060;
 	protected static const int COLOR_MUTED = 0xFFA0A0A0;
 	protected static const int COLOR_SECTION = 0xFFE0C060;
+	protected static const int HELD_UPDATE_MS = 200;
+	//! Missing in action: the screen lets go when the player is still alive this long after their time was up.
+	protected static const int HELD_GRACE_MS = 10000;
 
 	protected ref CTR_OperationResult m_Result;
 	protected VerticalLayoutWidget m_wList;
@@ -22,6 +26,10 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected TextWidget m_wAreas;
 	protected TextWidget m_wPersonalTime;
 	protected TextWidget m_wOperationTime;
+	//! Missing in action: the screen cannot be closed until the player died, which is due at this tick.
+	protected bool m_bHeld;
+	protected int m_iHeldUntilTick;
+	protected TextWidget m_wHeldLine;
 
 	//! The open result screen, if any (weak).
 	protected static CTR_ResultDialog s_Instance;
@@ -36,6 +44,8 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		CTR_ResultDialog dialog = new CTR_ResultDialog();
 		dialog.m_Result = result;
 		dialog.m_iOpenTick = System.GetTickCount();
+		dialog.m_bHeld = result.m_bMissing;
+		dialog.m_iHeldUntilTick = dialog.m_iOpenTick + result.m_fMissingSeconds * 1000;
 		OpenDialog(dialog, GetTitle(result), DIALOG_TAG, DIALOG_LAYOUT_MEDIUM);
 		s_Instance = dialog;
 		return dialog;
@@ -51,6 +61,13 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	CTR_OperationResult GetResult()
 	{
 		return m_Result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Missing in action: the screen cannot be closed yet.
+	bool IsHeld()
+	{
+		return m_bHeld;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -82,6 +99,14 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		{
 			TextWidget note = AddHeaderLine("#CTR-Result_PaidAtEnd");
 			SetColor(note, COLOR_MUTED);
+		}
+
+		if (m_bHeld)
+		{
+			m_wHeldLine = AddHeaderLine(GetHeldText());
+			SetColor(m_wHeldLine, COLOR_LOSS);
+			SetCloseShown(false);
+			GetGame().GetCallqueue().CallLater(UpdateHeld, HELD_UPDATE_MS, true);
 		}
 
 		m_wList = CreateScrollList(m_wRows, Math.Clamp(GetScreenHeight() - RESERVED_HEIGHT, MIN_LIST_HEIGHT, MAX_LIST_HEIGHT));
@@ -122,9 +147,68 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Missing in action: counts down, and closes once the player died. Lets go of them when they are still alive
+	//! after the AO ended, or well after their time was up.
+	protected void UpdateHeld()
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character || !character.GetCharacterController() || character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
+		{
+			Close();
+			return;
+		}
+
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_HasOperation() || System.GetTickCount() - m_iHeldUntilTick > HELD_GRACE_MS)
+		{
+			Release();
+			return;
+		}
+
+		if (m_wHeldLine)
+			m_wHeldLine.SetText(GetHeldText());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected string GetHeldText()
+	{
+		int seconds = Math.Max(0, Math.Ceil((m_iHeldUntilTick - System.GetTickCount()) / 1000.0));
+		return WidgetManager.Translate("#CTR-Result_MissingCountdown", seconds);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Release()
+	{
+		m_bHeld = false;
+		GetGame().GetCallqueue().Remove(UpdateHeld);
+		SetCloseShown(true);
+		if (m_wHeldLine)
+			m_wHeldLine.SetVisible(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetCloseShown(bool shown)
+	{
+		SCR_InputButtonComponent button = FindButton(BUTTON_CANCEL);
+		if (button)
+			button.SetVisible(shown, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The Close button and its key (Esc) do nothing while the player is held.
+	override protected void OnCancel()
+	{
+		if (m_bHeld)
+			return;
+
+		super.OnCancel();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		GetGame().GetCallqueue().Remove(UpdateElapsed);
+		GetGame().GetCallqueue().Remove(UpdateHeld);
 		if (s_Instance == this)
 			s_Instance = null;
 

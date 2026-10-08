@@ -457,6 +457,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A907265A0DC65D5}" {
+   Id "CTR-Result_MissingCountdown"
+   Target_en_us "You die in %1 s"
+   Target_ko_kr "%1초 후 사망"
+   Modified 1787851395
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DD884FF}" {
    Id "CTR-Result_NoOwner"
    Target_en_us "Not paid: no player identity"
@@ -715,8 +723,8 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A3602169}" {
    Id "CTR-Result_TitleMissing"
-   Target_en_us "Missing in action"
-   Target_ko_kr "작전 중 실종(MIA)"
+   Target_en_us "Missing In Action"
+   Target_ko_kr "작전 중 실종"
    Modified 1787837960
    Author "denev"
    LastChanged "denev"

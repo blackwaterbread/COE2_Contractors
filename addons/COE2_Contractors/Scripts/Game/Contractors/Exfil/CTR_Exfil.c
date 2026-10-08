@@ -132,51 +132,13 @@ class CTR_Exfil : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Missing in action: kills every living player outside the base, the bodies left by players who left during the
-	//! exfil, and those players if they came back (wherever they are), and deletes those players' last gear.
-	//! \param[out] outKilled Characters killed (to wait until they are dead).
-	void KillMissing(vector basePos, CTR_LastGear lastGear, notnull array<IEntity> outKilled)
+	//! Missing in action: the players who left outside the base during the exfil are missing too.
+	void HandOverLeft(notnull CTR_MissingInAction missing)
 	{
-		array<SCR_ChimeraCharacter> outside = {};
-		CollectOutsideBase(basePos, outside);
-		foreach (SCR_ChimeraCharacter character : outside)
-		{
-			Kill(character, outKilled);
-		}
-
-		PlayerManager playerManager = GetGame().GetPlayerManager();
-		array<int> playerIds = {};
-		playerManager.GetPlayers(playerIds);
 		foreach (int i, string ownerId : m_aLeftOwners)
 		{
-			if (lastGear)
-				lastGear.Clear(ownerId);
-
-			SCR_ChimeraCharacter body = SCR_ChimeraCharacter.Cast(m_aLeftBodies[i]);
-			if (IsAliveOutsideBase(body, basePos))
-				Kill(body, outKilled);
-
-			foreach (int playerId : playerIds)
-			{
-				if (MRX_Marx.GetOwnerId(playerId) == ownerId)
-					Kill(SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId)), outKilled);
-			}
+			missing.AddLeft(ownerId, m_aLeftBodies[i]);
 		}
-
-		Print(string.Format("[CTR] Missing in action: %1 characters killed, %2 players who left lose their gear", outKilled.Count(), m_aLeftOwners.Count()));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected static void Kill(SCR_ChimeraCharacter character, notnull array<IEntity> outKilled)
-	{
-		if (!character || outKilled.Contains(character) || !character.GetCharacterController())
-			return;
-
-		if (character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD)
-			return;
-
-		character.GetCharacterController().ForceDeath();
-		outKilled.Insert(character);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -30,11 +30,13 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	//! Short, so the tests do not wait for the shipped values.
 	protected static const int TEST_HOLD_SECONDS = 2;
 	protected static const int TEST_CANCEL_SECONDS = 4;
+	protected static const int TEST_MIA_SECONDS = 5;
 	//! COE2 removes the AO, its insertion and exfil points 3 s after it ends; the next test must not start before.
 	protected static const int AFTER_RETURN_MS = 4500;
 	//! Shipped values, put back after each test.
 	protected static int s_iConfiguredHoldSeconds = -1;
 	protected static int s_iConfiguredCancelSeconds = -1;
+	protected static int s_iConfiguredMiaSeconds = -1;
 	protected static float s_fConfiguredChance;
 	protected static float s_fConfiguredChancePerCivilian;
 
@@ -82,12 +84,14 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		{
 			s_iConfiguredHoldSeconds = settings.m_iExfilHoldSeconds;
 			s_iConfiguredCancelSeconds = settings.m_iCancelReturnSeconds;
+			s_iConfiguredMiaSeconds = settings.m_iMiaDeathSeconds;
 			s_fConfiguredChance = settings.m_fExfilEnemyChance;
 			s_fConfiguredChancePerCivilian = settings.m_fExfilEnemyChancePerCivilian;
 		}
 
 		settings.m_iExfilHoldSeconds = TEST_HOLD_SECONDS;
 		settings.m_iCancelReturnSeconds = TEST_CANCEL_SECONDS;
+		settings.m_iMiaDeathSeconds = TEST_MIA_SECONDS;
 		// A pursuit only where a test wants one.
 		settings.m_fExfilEnemyChance = GetPursuitChance();
 		settings.m_fExfilEnemyChancePerCivilian = GetPursuitChancePerCivilian();
@@ -466,6 +470,20 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! False when the result screen comes before the AO ends (missing in action).
+	protected bool IsResultAfterReturn()
+	{
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! From the result to the checks after everyone returned.
+	protected int GetAfterResultMs()
+	{
+		return AFTER_RETURN_MS;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! The result screen comes once after the AO ended.
 	protected void OnResult(CTR_OperationResult result)
 	{
@@ -477,7 +495,11 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		}
 
 		m_Result = result;
-		Check(m_GameMode.COE_GetState() == COE_EGameModeState.INTERMISSION, "result after the AO ended");
+		if (IsResultAfterReturn())
+			Check(m_GameMode.COE_GetState() == COE_EGameModeState.INTERMISSION, "result after the AO ended");
+		else
+			Check(m_GameMode.COE_GetState() == COE_EGameModeState.EXECUTION, "result before the AO ended");
+
 		Check(!result.m_bInProgress, "result of an ended operation");
 		CheckInt(result.m_aAreas.Count(), 1, "one AO in the result");
 		Check(result.m_Stats.m_bEnteredAO, "result: entered the AO");
@@ -486,7 +508,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 
 		// The screen opens right after this event.
 		GetGame().GetCallqueue().CallLater(CheckResultScreen, WAIT_MS);
-		GetGame().GetCallqueue().CallLater(AfterReturn, AFTER_RETURN_MS);
+		GetGame().GetCallqueue().CallLater(AfterReturn, GetAfterResultMs());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -547,6 +569,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		{
 			CTR_Settings.Get().m_iExfilHoldSeconds = s_iConfiguredHoldSeconds;
 			CTR_Settings.Get().m_iCancelReturnSeconds = s_iConfiguredCancelSeconds;
+			CTR_Settings.Get().m_iMiaDeathSeconds = s_iConfiguredMiaSeconds;
 			CTR_Settings.Get().m_fExfilEnemyChance = s_fConfiguredChance;
 			CTR_Settings.Get().m_fExfilEnemyChancePerCivilian = s_fConfiguredChancePerCivilian;
 		}
@@ -917,22 +940,160 @@ class CTR_Test_AllTasksFailed : CTR_Test_OperationFlow
 }
 
 //------------------------------------------------------------------------------------------------
-//! The host stays in the AO and the exfil countdown runs out: missing in action, the host dies, nothing is paid, the AO
-//! ends. Last test: the host is dead afterwards.
+//! The host drives a vehicle in the AO and the exfil countdown runs out: missing in action. The result screen comes at
+//! once and cannot be closed, the vehicle stops, the enemies around the host stand down; a few seconds later the host
+//! dies, the screen closes, nothing is paid and the AO ends. Last test: the host is dead afterwards.
 class CTR_Test_ExfilMissing : CTR_Test_OperationFlow
 {
+	protected static const ResourceName VEHICLE = "{259EE7B78C51B624}Prefabs/Vehicles/Wheeled/UAZ469/UAZ469.et";
+
+	protected IEntity m_Vehicle;
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnEnteredAO(vector pos)
+	{
+		m_Vehicle = KSC_GameTools.SpawnVehiclePrefab(VEHICLE, pos + Vector(0, 0, 8), 0);
+		Check(m_Vehicle != null, "vehicle spawned");
+		GetGame().GetCallqueue().CallLater(Board, 1500);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Board()
+	{
+		SCR_ChimeraCharacter character = GetCharacter();
+		if (!character || !m_Vehicle)
+			return;
+
+		SCR_CompartmentAccessComponent access = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
+		Check(access && access.MoveInVehicle(m_Vehicle, ECompartmentType.PILOT), "host gets in as driver");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected CarControllerComponent GetCar()
+	{
+		Vehicle vehicle = Vehicle.Cast(m_Vehicle);
+		if (!vehicle)
+			return null;
+
+		return CarControllerComponent.Cast(vehicle.GetVehicleController());
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected void DuringExfil()
 	{
+		CarControllerComponent car = GetCar();
+		if (car)
+		{
+			car.SetPersistentHandBrake(false);
+			car.StartEngine();
+		}
+
+		// The starter takes a moment.
+		GetGame().GetCallqueue().CallLater(RunOut, 3000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RunOut()
+	{
+		CarControllerComponent car = GetCar();
+		Check(car && car.IsEngineOn() && !car.GetPersistentHandBrake(), "engine running before the countdown runs out");
 		m_GameMode.CTR_SetExfilSecondsLeft(0);
-		GetGame().GetCallqueue().CallLater(CheckKilled, 300);
+		GetGame().GetCallqueue().CallLater(CheckHeld, 1500);
+		GetGame().GetCallqueue().CallLater(CheckKilled, TEST_MIA_SECONDS * 1000 + 1500);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Before the host's time is up.
+	protected void CheckHeld()
+	{
+		SCR_ChimeraCharacter character = GetCharacter();
+		Check(character && character.GetCharacterController().GetLifeState() != ECharacterLifeState.DEAD, "host alive while held");
+		Check(m_GameMode.CTR_IsOperationClosed() && m_GameMode.COE_GetState() == COE_EGameModeState.EXECUTION, "operation over, AO still there");
+		Check(m_Result && m_Result.m_bMissing, "result says the host is missing");
+
+		CTR_ResultDialog dialog = CTR_ResultDialog.GetOpen();
+		Check(dialog && dialog.IsHeld(), "result screen holds the host");
+		if (dialog)
+		{
+			// What the Close button and Esc do.
+			SCR_InputButtonComponent close = dialog.FindButton(SCR_ConfigurableDialogUi.BUTTON_CANCEL);
+			if (close)
+				close.m_OnActivated.Invoke(close);
+
+			Check(CTR_ResultDialog.GetOpen() == dialog, "result screen cannot be closed");
+		}
+
+		CarControllerComponent car = GetCar();
+		Check(car && !car.IsEngineOn() && car.GetPersistentHandBrake(), "vehicle stopped: engine off, handbrake on");
+
+		int active, stoodDown;
+		CountEnemies(active, stoodDown);
+		CheckInt(active, 0, "no enemy AI active near the host");
+		Check(stoodDown > 0, "enemy AI near the host stood down: " + stoodDown);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Living hostile AI within the stand-down radius of the host.
+	protected void CountEnemies(out int active, out int stoodDown)
+	{
+		SCR_ChimeraCharacter host = GetCharacter();
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (!host || !aiWorld)
+			return;
+
+		array<AIAgent> agents = {};
+		aiWorld.GetAIAgents(agents);
+		array<AIAgent> members = {};
+		foreach (AIAgent agent : agents)
+		{
+			AIGroup group = AIGroup.Cast(agent);
+			if (!group)
+			{
+				members.Insert(agent);
+				continue;
+			}
+
+			array<AIAgent> groupMembers = {};
+			group.GetAgents(groupMembers);
+			members.InsertAll(groupMembers);
+		}
+
+		set<AIAgent> counted = new set<AIAgent>();
+		foreach (AIAgent member : members)
+		{
+			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(member.GetControlledEntity());
+			if (!character || counted.Contains(member) || !CTR_MissingInAction.IsHostile(host.GetFaction(), character.GetFaction()))
+				continue;
+
+			if (character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD || vector.Distance(character.GetOrigin(), host.GetOrigin()) > CTR_MissingInAction.ENEMY_RADIUS)
+				continue;
+
+			counted.Insert(member);
+			if (member.IsAIActivated())
+				active++;
+			else
+				stoodDown++;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void CheckKilled()
 	{
 		SCR_ChimeraCharacter character = GetCharacter();
-		Check(!character || character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD, "host outside the base killed");
+		Check(!character || character.GetCharacterController().GetLifeState() == ECharacterLifeState.DEAD, "host killed when the time was up");
+		Check(CTR_ResultDialog.GetOpen() == null, "result screen closed when the host died");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsResultAfterReturn()
+	{
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected int GetAfterResultMs()
+	{
+		return TEST_MIA_SECONDS * 1000 + 2000 + AFTER_RETURN_MS;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -942,6 +1103,7 @@ class CTR_Test_ExfilMissing : CTR_Test_OperationFlow
 		CheckInt(result.m_iPayPercent, 0, "nothing paid");
 		CheckInt(result.m_Payout.m_iTotal, 0, "total 0");
 		CheckInt(result.m_Stats.m_iDeaths, 0, "the death after the end does not count");
+		Check(result.m_bMissing && result.m_fMissingSeconds > TEST_MIA_SECONDS - 2, "held for the configured seconds: " + result.m_fMissingSeconds);
 	}
 
 	//------------------------------------------------------------------------------------------------

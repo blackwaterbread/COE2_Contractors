@@ -130,6 +130,9 @@ class CTR_OperationResult : Managed
 	int m_eEnd;
 	//! After the operation: percent of the earnings paid (deductions stay whole).
 	int m_iPayPercent = 100;
+	//! Missing in action: this player is held behind the result screen and dies in that many seconds.
+	bool m_bMissing;
+	float m_fMissingSeconds;
 	int m_iDurationSeconds;
 	ref array<ref CTR_AreaInfo> m_aAreas = {};
 	ref array<ref CTR_TaskOutcome> m_aTasks = {};
