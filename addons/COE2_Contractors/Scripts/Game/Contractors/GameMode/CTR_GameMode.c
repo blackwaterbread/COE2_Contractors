@@ -6,6 +6,12 @@
 //! - When every task failed there is nothing to exfil for: everyone returns at once.
 modded class COE_GameMode
 {
+	//! How the task part of the operation ended, for the operation timer: its time stops then.
+	static const int CTR_TASKS_RUNNING = 0;
+	static const int CTR_TASKS_COMPLETE = 1;
+	static const int CTR_TASKS_EARLY_EXFIL = 2;
+	static const int CTR_TASKS_CANCELLED = 3;
+
 	protected ref CTR_Operation m_CTR_Operation;
 	protected ref CTR_Settlement m_CTR_Settlement;
 	//! Server: gear players keep across sessions.
@@ -32,6 +38,11 @@ modded class COE_GameMode
 	protected WorldTimestamp m_CTR_OperationStart;
 	[RplProp()]
 	protected WorldTimestamp m_CTR_OperationEnd;
+	//! CTR_TASKS_*, and when the tasks ended (the exfil started or the commander cancelled before it).
+	[RplProp()]
+	protected int m_iCTR_TasksEnd;
+	[RplProp()]
+	protected WorldTimestamp m_CTR_TasksEndTime;
 	[RplProp()]
 	protected bool m_bCTR_InExfil;
 	[RplProp()]
@@ -192,20 +203,43 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Every machine: seconds since the operation started; stops when it ends.
-	int CTR_GetOperationSeconds()
+	//! Every machine: how the task part of the operation ended (CTR_TASKS_*), CTR_TASKS_RUNNING while it runs.
+	int CTR_GetTasksEnd()
+	{
+		return m_iCTR_TasksEnd;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Every machine: seconds of the task part of the operation; stops when the tasks end (the exfil starts or the
+	//! commander cancels) or the operation does.
+	int CTR_GetTasksSeconds()
 	{
 		if (!m_bCTR_HasOperation || !m_CTR_OperationStart)
 			return 0;
 
-		ChimeraWorld world = GetGame().GetWorld();
+		if (m_iCTR_TasksEnd != CTR_TASKS_RUNNING && m_CTR_TasksEndTime)
+			return m_CTR_TasksEndTime.DiffSeconds(m_CTR_OperationStart);
+
 		if (m_bCTR_OperationClosed && m_CTR_OperationEnd)
 			return m_CTR_OperationEnd.DiffSeconds(m_CTR_OperationStart);
 
+		ChimeraWorld world = GetGame().GetWorld();
 		if (!world)
 			return 0;
 
 		return world.GetServerTimestamp().DiffSeconds(m_CTR_OperationStart);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: the task part of the operation ended this way; its time stops now. Only the first end counts.
+	protected void CTR_EndTasks(int tasksEnd)
+	{
+		if (m_iCTR_TasksEnd != CTR_TASKS_RUNNING)
+			return;
+
+		m_iCTR_TasksEnd = tasksEnd;
+		m_CTR_TasksEndTime = CTR_GetTimeIn(0);
+		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -378,6 +412,7 @@ modded class COE_GameMode
 
 		m_bCTR_HasOperation = true;
 		m_bCTR_OperationClosed = false;
+		m_iCTR_TasksEnd = CTR_TASKS_RUNNING;
 		m_CTR_OperationStart = CTR_GetTimeIn(0);
 		Replication.BumpMe();
 		Print(string.Format("[CTR] Operation %1 started (%2 AO)", m_CTR_Operation.GetId(), m_aCurrentAOs.Count()));
@@ -464,6 +499,11 @@ modded class COE_GameMode
 			m_ExfilTask.CTR_DisableTrigger();
 
 		CTR_Settings settings = CTR_Settings.Get();
+		int tasksEnd = CTR_TASKS_COMPLETE;
+		if (early)
+			tasksEnd = CTR_TASKS_EARLY_EXFIL;
+
+		CTR_EndTasks(tasksEnd);
 		m_bCTR_InExfil = true;
 		m_bCTR_ExfilPointLocked = true;
 		m_bCTR_ExfilHolding = false;
@@ -747,6 +787,9 @@ modded class COE_GameMode
 	//! Closes the operation and settles it as it is now; the pay is committed in the background.
 	protected void CTR_EndOperation(CTR_EOperationEnd end)
 	{
+		if (end == CTR_EOperationEnd.CANCELLED)
+			CTR_EndTasks(CTR_TASKS_CANCELLED);
+
 		CTR_StopExfil();
 		m_CTR_Operation.Close();
 

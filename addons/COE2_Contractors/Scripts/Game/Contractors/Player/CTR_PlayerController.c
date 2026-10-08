@@ -10,6 +10,8 @@ modded class COE_PlayerController
 	protected static ref MRX_ItemSnapshot s_CTR_SpawnGear;
 	//! Client: the operation timer on the HUD.
 	protected ref CTR_OperationTimerHud m_CTR_TimerHud;
+	//! Client: the return status at the top centre.
+	protected ref CTR_ExfilStatusHud m_CTR_StatusHud;
 	//! Server: last operation screen request of this player, against floods.
 	protected int m_iCTR_LastRequestTick;
 
@@ -75,19 +77,32 @@ modded class COE_PlayerController
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Client: the return status at the top centre, or null before their first spawn.
+	CTR_ExfilStatusHud CTR_GetStatusHud()
+	{
+		return m_CTR_StatusHud;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	bool CTR_HasMainEntity()
 	{
 		return m_MainEntity != null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! The operation timer is built on the HUD once the local player controls a character.
+	//! The operation timer and the return status are built on the HUD once the local player controls a character.
 	override void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
 		super.OnControlledEntityChanged(from, to);
 
-		if (to && this == GetGame().GetPlayerController() && (!m_CTR_TimerHud || !m_CTR_TimerHud.IsBuilt()))
+		if (!to || this != GetGame().GetPlayerController())
+			return;
+
+		if (!m_CTR_TimerHud || !m_CTR_TimerHud.IsBuilt())
 			m_CTR_TimerHud = CTR_OperationTimerHud.Create();
+
+		if (!m_CTR_StatusHud || !m_CTR_StatusHud.IsBuilt())
+			m_CTR_StatusHud = CTR_ExfilStatusHud.Create();
 	}
 
 	//------------------------------------------------------------------------------------------------

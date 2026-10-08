@@ -45,6 +45,8 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	protected int m_iResults;
 	protected ref CTR_OperationResult m_Result;
 	protected vector m_vExfil;
+	//! The operation timer when the exfil started: it must not move after.
+	protected string m_sTasksTime;
 
 	//------------------------------------------------------------------------------------------------
 	override int GetTimeoutMs()
@@ -367,7 +369,9 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		Check(status && status.m_bInProgress && status.m_bExfil, "live operation screen during the exfil");
 
 		CheckTimerRow("exfil", true);
-		CheckTimerRow("present", true);
+		CheckStatus(CTR_EExfilStatus.NONE, "away from the exfil point");
+		CheckInt(m_GameMode.CTR_GetTasksEnd(), GetExpectedTasksEnd(), "how the tasks ended");
+		m_sTasksTime = GetTimerRow("operation");
 
 		// The commander cannot move the exfil point any more.
 		m_GameMode.ExecuteCommanderRequest(COE_ECommanderRequest.EXFIL_POINT, m_vExfil + "300 0 300");
@@ -402,25 +406,63 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		int present, outside, needed;
 		m_GameMode.CTR_GetExfilCount(present, outside, needed);
 		CheckInt(present, 1, "host counted at the exfil point");
+		CTR_EExfilStatus shown = GetStatus();
+		Check(shown == CTR_EExfilStatus.PRESENT || shown == CTR_EExfilStatus.HOLD, "return status at the exfil point: " + typename.EnumToString(CTR_EExfilStatus, shown));
+		CheckString(GetTimerRow("operation"), m_sTasksTime, "operation time stopped when the tasks ended");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! How the task part ends when the exfil starts.
+	protected int GetExpectedTasksEnd()
+	{
+		return COE_GameMode.CTR_TASKS_COMPLETE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected CTR_OperationTimerHud GetTimerHud()
+	{
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!controller)
+			return null;
+
+		return controller.CTR_GetTimerHud();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected string GetTimerRow(string row)
+	{
+		CTR_OperationTimerHud hud = GetTimerHud();
+		if (!hud)
+			return string.Empty;
+
+		return hud.GetRowText(row);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void CheckTimerRow(string row, bool shown)
 	{
-		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
-		CTR_OperationTimerHud hud;
-		if (controller)
-			hud = controller.CTR_GetTimerHud();
-
-		Check(hud != null, "operation timer on the HUD");
-		if (!hud)
-			return;
-
-		string text = hud.GetRowText(row);
+		Check(GetTimerHud() != null, "operation timer on the HUD");
+		string text = GetTimerRow(row);
 		if (shown)
 			Check(!text.IsEmpty(), "timer row shown: " + row);
 		else
 			Check(text.IsEmpty(), "timer row hidden: " + row + " = " + text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected CTR_EExfilStatus GetStatus()
+	{
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!controller || !controller.CTR_GetStatusHud())
+			return -1;
+
+		return controller.CTR_GetStatusHud().GetShown();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckStatus(CTR_EExfilStatus expected, string message)
+	{
+		CheckString(typename.EnumToString(CTR_EExfilStatus, GetStatus()), typename.EnumToString(CTR_EExfilStatus, expected), "return status " + message);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -612,7 +654,8 @@ class CTR_Test_CancelBeforeExfil : CTR_Test_OperationFlow
 		Check(m_GameMode.CTR_IsOperationClosed(), "operation closed by the cancel");
 		Check(m_GameMode.CTR_GetCancelReturn() != null, "return pending");
 		CheckInt(CTR_AlertHud.GetShownAlert(), CTR_EAlert.CANCELLED, "cancel alert shown");
-		CheckTimerRow("cancel", true);
+		CheckStatus(CTR_EExfilStatus.CANCEL, "after the cancel");
+		CheckInt(m_GameMode.CTR_GetTasksEnd(), COE_GameMode.CTR_TASKS_CANCELLED, "the tasks ended by the cancel");
 
 		SetTaskStates(SCR_ETaskState.COMPLETED, -1);
 		GetGame().GetCallqueue().CallLater(CheckNoExfil, 1000);
@@ -657,7 +700,8 @@ class CTR_Test_ExfilAbandoned : CTR_Test_CancelBeforeExfil
 	{
 		Check(m_GameMode.CTR_IsOperationClosed() && !m_GameMode.CTR_IsInExfil(), "exfil stopped by the cancel");
 		CheckTimerRow("exfil", false);
-		CheckTimerRow("cancel", true);
+		CheckStatus(CTR_EExfilStatus.CANCEL, "after the cancel");
+		CheckInt(m_GameMode.CTR_GetTasksEnd(), COE_GameMode.CTR_TASKS_COMPLETE, "the tasks ended before the cancel");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -688,6 +732,12 @@ class CTR_Test_EarlyExfil : CTR_Test_OperationFlow
 	override protected void EndTasks()
 	{
 		OrderEarlyExfil();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected int GetExpectedTasksEnd()
+	{
+		return COE_GameMode.CTR_TASKS_EARLY_EXFIL;
 	}
 
 	//------------------------------------------------------------------------------------------------

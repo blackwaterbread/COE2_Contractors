@@ -801,6 +801,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A905A14A9315DF0}" {
+   Id "CTR-Timer_EarlyExfil"
+   Target_en_us "Early exfil"
+   Target_ko_kr "조기 철수"
+   Modified 1787845150
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A903DF0A366069B}" {
    Id "CTR-Timer_Exfil"
    Target_en_us "Exfil in"
@@ -822,6 +830,22 @@ StringTable {
    Target_en_us "Operation"
    Target_ko_kr "작전 시간"
    Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A905A14A93630BC}" {
+   Id "CTR-Timer_OperationCancelled"
+   Target_en_us "Operation cancelled"
+   Target_ko_kr "작전 취소"
+   Modified 1787845150
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A905A14A930BEC5}" {
+   Id "CTR-Timer_OperationComplete"
+   Target_en_us "Operation complete"
+   Target_ko_kr "작전 완료"
+   Modified 1787845150
    Author "denev"
    LastChanged "denev"
   }
@@ -859,8 +883,8 @@ StringTable {
   }
   CustomStringTableItem "{6A903DF0A37AAF28}" {
    Id "CTR-Timer_PursuitValue"
-   Target_en_us "Wave %1 / next %2"
-   Target_ko_kr "%1파 / 다음 파 %2"
+   Target_en_us "Wave %1 · %2"
+   Target_ko_kr "%1파 · %2"
    Modified 1787837960
    Author "denev"
    LastChanged "denev"

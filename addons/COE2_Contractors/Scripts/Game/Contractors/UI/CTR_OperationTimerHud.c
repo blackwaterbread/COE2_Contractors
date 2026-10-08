@@ -1,15 +1,18 @@
-//! Operation timer at the top left of the HUD while an operation runs (client), in the look of the Marx balance panel:
-//! operation time, the exfil countdown, players at the exfil point, the hold before the return, the return after the
-//! commander cancelled, and the enemy pursuit. Rows show only when they apply. Reads the replicated state of the game
-//! mode; times are server timestamps, so every machine shows the same.
+//! Operation timer at the top left of the HUD while an operation runs (client), in the look of the Marx balance panel.
+//! Two boxes: the operation (its time stops when the tasks end, the title then tells how), and during the exfil the
+//! countdown, with hundredths running fast for urgency, and the enemy pursuit once it came. What concerns the return
+//! (players at the exfil point, the hold, the return after a cancel) shows at the top centre (CTR_ExfilStatusHud).
+//! Reads the replicated state of the game mode; times are server timestamps, so every machine shows the same.
 class CTR_OperationTimerHud : Managed
 {
 	protected static const int UPDATE_MS = 250;
 	protected static const float MARGIN = 24;
-	protected static const float WIDTH = 390;
+	//! Both boxes; their rows fill it (title left, value right).
+	protected static const float WIDTH = 300;
+	protected static const float BOX_GAP = 6;
 	protected static const ResourceName BOLD_FONT = "{EABA4FE9D014CCEF}UI/Fonts/RobotoCondensed/RobotoCondensed_Bold.fnt";
-	protected static const int TITLE_FONT_SIZE = 16;
-	protected static const int VALUE_FONT_SIZE = 24;
+	static const int TEXT_FONT_SIZE = 20;
+	protected static const int FRACTION_FONT_SIZE = 14;
 	protected static const float ACCENT_WIDTH = 4;
 	//! The exfil countdown turns red in its last minute.
 	protected static const int URGENT_SECONDS = 60;
@@ -18,12 +21,12 @@ class CTR_OperationTimerHud : Managed
 	protected static const float ICON_SIZE = 18;
 
 	protected Widget m_wRoot;
+	protected Widget m_wExfilBox;
 	protected ref CTR_TimerRow m_OperationRow;
 	protected ref CTR_TimerRow m_ExfilRow;
-	protected ref CTR_TimerRow m_PresentRow;
-	protected ref CTR_TimerRow m_HoldRow;
-	protected ref CTR_TimerRow m_CancelRow;
+	protected TextWidget m_wExfilFraction;
 	protected ref CTR_TimerRow m_PursuitRow;
+	protected bool m_bFastUpdate;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return Null before the vanilla HUD exists.
@@ -45,7 +48,10 @@ class CTR_OperationTimerHud : Managed
 	{
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
 		if (callQueue)
+		{
 			callQueue.Remove(Update);
+			callQueue.Remove(UpdateExfil);
+		}
 
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
@@ -65,24 +71,30 @@ class CTR_OperationTimerHud : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Text of a row as shown, for tests: "operation", "exfil", "present", "hold", "cancel", "pursuit". Empty when hidden.
+	//! For tests: "operation", "exfil" or "pursuit". Empty when hidden.
 	string GetRowText(string row)
 	{
-		CTR_TimerRow timerRow;
-		switch (row)
-		{
-			case "operation": timerRow = m_OperationRow; break;
-			case "exfil": timerRow = m_ExfilRow; break;
-			case "present": timerRow = m_PresentRow; break;
-			case "hold": timerRow = m_HoldRow; break;
-			case "cancel": timerRow = m_CancelRow; break;
-			case "pursuit": timerRow = m_PursuitRow; break;
-		}
-
+		CTR_TimerRow timerRow = GetRow(row);
 		if (!IsShown() || !timerRow || !timerRow.IsShown())
 			return string.Empty;
 
+		if (row != "operation" && !m_wExfilBox.IsVisible())
+			return string.Empty;
+
 		return timerRow.GetValue();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected CTR_TimerRow GetRow(string row)
+	{
+		switch (row)
+		{
+			case "operation": return m_OperationRow;
+			case "exfil": return m_ExfilRow;
+			case "pursuit": return m_PursuitRow;
+		}
+
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -95,46 +107,77 @@ class CTR_OperationTimerHud : Managed
 		bool shown = gameMode && gameMode.CTR_HasOperation();
 		m_wRoot.SetVisible(shown);
 		if (!shown)
-			return;
-
-		m_OperationRow.Set(CTR_ResultDialog.FormatDuration(gameMode.CTR_GetOperationSeconds()), Color.FromInt(Color.WHITE));
-
-		WorldTimestamp deadline = gameMode.CTR_GetExfilDeadline();
-		m_ExfilRow.SetShown(deadline != null);
-		m_PresentRow.SetShown(deadline != null);
-		if (deadline)
 		{
-			int left = Math.Max(0, Math.Ceil(COE_GameMode.CTR_SecondsUntil(deadline)));
-			Color exfilColor = Color.FromInt(Color.WHITE);
-			if (left <= URGENT_SECONDS)
-				exfilColor = GetAlarmColor();
-
-			m_ExfilRow.Set(CTR_ResultDialog.FormatDuration(left), exfilColor);
-
-			int present, outside, needed;
-			gameMode.CTR_GetExfilCount(present, outside, needed);
-			Color presentColor = GetMutedColor();
-			if (CTR_ExfilRules.IsMet(present, outside, CTR_Settings.Get().m_fExfilPlayerRatio))
-				presentColor = GetGoColor();
-
-			m_PresentRow.Set(WidgetManager.Translate("#CTR-Timer_PresentValue", present, outside, needed), presentColor);
+			SetFastUpdate(false);
+			return;
 		}
 
-		WorldTimestamp holdEnd = gameMode.CTR_GetExfilHoldEnd();
-		m_HoldRow.SetShown(holdEnd != null);
-		if (holdEnd)
-			m_HoldRow.Set(CTR_ResultDialog.FormatDuration(Math.Max(0, Math.Ceil(COE_GameMode.CTR_SecondsUntil(holdEnd)))), GetGoColor());
+		m_OperationRow.SetTitle(GetOperationTitle(gameMode.CTR_GetTasksEnd()));
+		m_OperationRow.Set(CTR_ResultDialog.FormatDuration(gameMode.CTR_GetTasksSeconds()), Color.FromInt(Color.WHITE));
 
-		WorldTimestamp cancelReturn = gameMode.CTR_GetCancelReturn();
-		m_CancelRow.SetShown(cancelReturn != null);
-		if (cancelReturn)
-			m_CancelRow.Set(CTR_ResultDialog.FormatDuration(Math.Max(0, Math.Ceil(COE_GameMode.CTR_SecondsUntil(cancelReturn)))), GetAccentColor());
+		bool exfil = gameMode.CTR_GetExfilDeadline() != null;
+		m_wExfilBox.SetVisible(exfil);
+		SetFastUpdate(exfil);
+		if (exfil)
+			UpdateExfil();
 
 		UpdatePursuit(gameMode);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! The pursuit shows only once its first wave came: its chance is never shown.
+	protected static string GetOperationTitle(int tasksEnd)
+	{
+		switch (tasksEnd)
+		{
+			case COE_GameMode.CTR_TASKS_COMPLETE: return "#CTR-Timer_OperationComplete";
+			case COE_GameMode.CTR_TASKS_EARLY_EXFIL: return "#CTR-Timer_EarlyExfil";
+			case COE_GameMode.CTR_TASKS_CANCELLED: return "#CTR-Timer_OperationCancelled";
+		}
+
+		return "#CTR-Timer_Operation";
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The exfil countdown runs every frame: its hundredths must move.
+	protected void SetFastUpdate(bool fast)
+	{
+		if (fast == m_bFastUpdate)
+			return;
+
+		m_bFastUpdate = fast;
+		GetGame().GetCallqueue().Remove(UpdateExfil);
+		if (fast)
+			GetGame().GetCallqueue().CallLater(UpdateExfil, 0, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateExfil()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !m_ExfilRow)
+			return;
+
+		WorldTimestamp deadline = gameMode.CTR_GetExfilDeadline();
+		if (!deadline)
+			return;
+
+		float left = Math.Max(0, COE_GameMode.CTR_SecondsUntil(deadline));
+		int seconds = left;
+		int hundredths = (left - seconds) * 100;
+		Color color = Color.FromInt(Color.WHITE);
+		if (left <= URGENT_SECONDS)
+			color = GetAlarmColor();
+
+		m_ExfilRow.Set(CTR_ResultDialog.FormatDuration(seconds), color);
+		if (m_wExfilFraction)
+		{
+			m_wExfilFraction.SetText("." + hundredths.ToString(2));
+			m_wExfilFraction.SetColor(color);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Shows only once the first wave came: the chance of a pursuit is never shown.
 	protected void UpdatePursuit(notnull COE_GameMode gameMode)
 	{
 		int wave = gameMode.CTR_GetPursuitWave();
@@ -153,57 +196,76 @@ class CTR_OperationTimerHud : Managed
 	//------------------------------------------------------------------------------------------------
 	protected void Build(notnull Widget parent)
 	{
-		m_wRoot = CreateWidget(WidgetType.OverlayWidgetTypeID, Color.FromInt(Color.WHITE), parent);
+		m_wRoot = CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), parent);
 		FrameSlot.SetAnchorMin(m_wRoot, 0, 0);
 		FrameSlot.SetAnchorMax(m_wRoot, 0, 0);
 		FrameSlot.SetAlignment(m_wRoot, 0, 0);
 		FrameSlot.SetPos(m_wRoot, MARGIN, MARGIN);
 		FrameSlot.SetSizeToContent(m_wRoot, true);
 
-		Stretch(CreateWidget(WidgetType.ImageWidgetTypeID, Color.FromSRGBA(62, 66, 72, 255), m_wRoot));
-		Widget fill = CreateWidget(WidgetType.ImageWidgetTypeID, Color.FromSRGBA(20, 22, 25, 240), m_wRoot);
+		Widget operation = AddBox(m_wRoot, GetAccentColor(), 0);
+		m_OperationRow = AddRow(operation, "#CTR-Timer_Operation", GetAccentColor());
+
+		Widget exfil = AddBox(m_wRoot, GetAccentColor(), BOX_GAP);
+		m_wExfilBox = exfil.GetParent().GetParent();
+		m_ExfilRow = AddRow(exfil, "#CTR-Timer_Exfil", GetAccentColor());
+		m_wExfilFraction = CreateText(m_ExfilRow.m_wRow, FRACTION_FONT_SIZE, Color.FromInt(Color.WHITE));
+		AlignableSlot.SetVerticalAlign(m_wExfilFraction, LayoutVerticalAlign.Bottom);
+		AlignableSlot.SetPadding(m_wExfilFraction, 1, 0, 0, 2);
+		m_PursuitRow = AddRow(exfil, "#CTR-Timer_Pursuit", GetAlarmColor(), WARNING_ICON);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A box in the panel's look. \return The vertical layout for its rows.
+	static Widget AddBox(notnull Widget parent, Color accentColor, float topGap, float width = WIDTH)
+	{
+		Widget box = CreateWidget(WidgetType.OverlayWidgetTypeID, Color.FromInt(Color.WHITE), parent);
+		AlignableSlot.SetHorizontalAlign(box, LayoutHorizontalAlign.Stretch);
+		AlignableSlot.SetPadding(box, 0, topGap, 0, 0);
+
+		Stretch(CreateWidget(WidgetType.ImageWidgetTypeID, Color.FromSRGBA(62, 66, 72, 255), box));
+		Widget fill = CreateWidget(WidgetType.ImageWidgetTypeID, Color.FromSRGBA(20, 22, 25, 240), box);
 		Stretch(fill);
 		AlignableSlot.SetPadding(fill, 1, 1, 1, 1);
-		ImageWidget accent = ImageWidget.Cast(CreateWidget(WidgetType.ImageWidgetTypeID, GetAccentColor(), m_wRoot));
+		ImageWidget accent = ImageWidget.Cast(CreateWidget(WidgetType.ImageWidgetTypeID, accentColor, box));
 		AlignableSlot.SetHorizontalAlign(accent, LayoutHorizontalAlign.Left);
 		AlignableSlot.SetVerticalAlign(accent, LayoutVerticalAlign.Stretch);
 		accent.SetSize(ACCENT_WIDTH, 1);
 
-		SizeLayoutWidget size = SizeLayoutWidget.Cast(CreateWidget(WidgetType.SizeLayoutWidgetTypeID, Color.FromInt(Color.WHITE), m_wRoot));
+		SizeLayoutWidget size = SizeLayoutWidget.Cast(CreateWidget(WidgetType.SizeLayoutWidgetTypeID, Color.FromInt(Color.WHITE), box));
+		AlignableSlot.SetHorizontalAlign(size, LayoutHorizontalAlign.Stretch);
 		size.EnableWidthOverride(true);
-		size.SetWidthOverride(WIDTH);
+		size.SetWidthOverride(width);
 		Widget column = CreateWidget(WidgetType.VerticalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), size);
-		AlignableSlot.SetPadding(column, 14 + ACCENT_WIDTH, 6, 14, 8);
-
-		m_OperationRow = AddRow(column, "#CTR-Timer_Operation", GetAccentColor());
-		m_ExfilRow = AddRow(column, "#CTR-Timer_Exfil", GetAccentColor());
-		m_PresentRow = AddRow(column, "#CTR-Timer_Present", GetAccentColor());
-		m_HoldRow = AddRow(column, "#CTR-Timer_Hold", GetGoColor());
-		m_CancelRow = AddRow(column, "#CTR-Timer_Cancel", GetAccentColor());
-		m_PursuitRow = AddRow(column, "#CTR-Timer_Pursuit", GetAlarmColor(), WARNING_ICON);
+		AlignableSlot.SetHorizontalAlign(column, LayoutHorizontalAlign.Stretch);
+		// Nothing above, all below: the font leaves room above the letters.
+		AlignableSlot.SetPadding(column, 12 + ACCENT_WIDTH, 0, 12, 11);
+		return column;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected CTR_TimerRow AddRow(notnull Widget column, string title, Color titleColor, string icon = string.Empty)
+	//! A title and a value of the same size, the value on the right.
+	static CTR_TimerRow AddRow(notnull Widget column, string title, Color titleColor, string icon = string.Empty, int fontSize = TEXT_FONT_SIZE)
 	{
 		Widget row = CreateWidget(WidgetType.HorizontalLayoutWidgetTypeID, Color.FromInt(Color.WHITE), column);
 		AlignableSlot.SetHorizontalAlign(row, LayoutHorizontalAlign.Stretch);
-		AlignableSlot.SetPadding(row, 0, 2, 0, 2);
+		AlignableSlot.SetPadding(row, 0, 1, 0, 1);
 
 		if (!icon.IsEmpty())
 			AddIcon(row, icon, titleColor, ICON_SIZE);
 
-		TextWidget titleText = CreateText(row, TITLE_FONT_SIZE, titleColor);
+		TextWidget titleText = CreateText(row, fontSize, titleColor);
 		titleText.SetText(title);
 		LayoutSlot.SetSizeMode(titleText, LayoutSizeMode.Fill);
 		AlignableSlot.SetVerticalAlign(titleText, LayoutVerticalAlign.Center);
 
-		TextWidget valueText = CreateText(row, VALUE_FONT_SIZE, Color.FromInt(Color.WHITE));
+		TextWidget valueText = CreateText(row, fontSize, Color.FromInt(Color.WHITE));
 		AlignableSlot.SetVerticalAlign(valueText, LayoutVerticalAlign.Center);
-		AlignableSlot.SetPadding(valueText, 12, 0, 0, 0);
+		AlignableSlot.SetPadding(valueText, 16, 0, 0, 0);
 
 		CTR_TimerRow timerRow = new CTR_TimerRow();
 		timerRow.m_wRow = row;
+		timerRow.m_wTitle = titleText;
 		timerRow.m_wValue = valueText;
 		return timerRow;
 	}
@@ -224,14 +286,14 @@ class CTR_OperationTimerHud : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static Widget CreateWidget(WidgetType type, Color color, Widget parent)
+	static Widget CreateWidget(WidgetType type, Color color, Widget parent)
 	{
 		int flags = WidgetFlags.VISIBLE | WidgetFlags.IGNORE_CURSOR | WidgetFlags.NOFOCUS;
 		return GetGame().GetWorkspace().CreateWidget(type, flags, color, 0, parent);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static TextWidget CreateText(Widget parent, int size, Color color)
+	static TextWidget CreateText(Widget parent, int size, Color color)
 	{
 		TextWidget text = TextWidget.Cast(CreateWidget(WidgetType.TextWidgetTypeID, color, parent));
 		text.SetFont(BOLD_FONT);
@@ -276,6 +338,7 @@ class CTR_OperationTimerHud : Managed
 class CTR_TimerRow : Managed
 {
 	Widget m_wRow;
+	TextWidget m_wTitle;
 	TextWidget m_wValue;
 
 	//------------------------------------------------------------------------------------------------
@@ -286,6 +349,20 @@ class CTR_TimerRow : Managed
 
 		m_wValue.SetText(value);
 		m_wValue.SetColor(color);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTitle(string title)
+	{
+		if (m_wTitle && m_wTitle.GetText() != title)
+			m_wTitle.SetText(title);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTitleColor(Color color)
+	{
+		if (m_wTitle)
+			m_wTitle.SetColor(color);
 	}
 
 	//------------------------------------------------------------------------------------------------
