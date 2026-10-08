@@ -686,7 +686,7 @@ modded class COE_GameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Server: the commander cancels the operation (commander menu, base board, #ctr cancel). The pay is settled now and
+	//! Server: the commander cancels the operation (commander menu, base board, ctr.cancel debug action). The pay is settled now and
 	//! everyone returns after a short delay. Ignored while a cancel waits or after the operation ended.
 	void CTR_RequestCancel()
 	{

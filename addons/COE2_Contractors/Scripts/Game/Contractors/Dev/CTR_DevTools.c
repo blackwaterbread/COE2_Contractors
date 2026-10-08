@@ -1,5 +1,5 @@
-#ifdef ENABLE_DIAG
-//! Shortcuts for trying Contractors by hand and in the tests (diag builds only: Workbench, PeerTool, diag server).
+//! Shortcuts for trying Contractors by hand (the ctr.* debug actions, CTR_DebugActions.c) and in the tests. Compiled in
+//! every build like the debug actions; only those (run in developer builds only) and the tests call them.
 class CTR_DevTools
 {
 	//! AOs closer than this to the main base are not picked.
@@ -19,7 +19,7 @@ class CTR_DevTools
 			return "not a COE2 world";
 
 		if (gameMode.COE_GetState() != COE_EGameModeState.INTERMISSION)
-			return "an AO is already running (#ctr cancel ends it)";
+			return "an AO is already running (ctr.cancel ends it)";
 
 		COE_FactionManager factionManager = COE_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager || !factionManager.GetPlayerFaction() || !factionManager.GetEnemyFaction())
@@ -281,4 +281,3 @@ class CTR_DevQuery : Managed
 		return m_Found;
 	}
 }
-#endif
