@@ -1,17 +1,3 @@
-//! Answer to a player who asks to return to base during the loot time.
-enum CTR_EReturnStatus
-{
-	OK,
-	//! No loot time: the operation still runs, or the AO already ended.
-	NOT_NOW,
-	DEAD,
-	//! Only the driver takes a vehicle back.
-	NOT_DRIVER,
-	AT_BASE,
-	FAILED
-}
-
-//------------------------------------------------------------------------------------------------
 //! Moves vehicles with players inside to the main base, crew included (server).
 //! Players on foot are moved by COE2's own fast travel when the AO ends.
 class CTR_ReturnTrip
@@ -62,22 +48,6 @@ class CTR_ReturnTrip
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Living players sitting in the vehicle.
-	static void CollectPlayersIn(notnull IEntity vehicle, notnull array<SCR_ChimeraCharacter> outCharacters)
-	{
-		PlayerManager playerManager = GetGame().GetPlayerManager();
-		array<int> playerIds = {};
-		playerManager.GetPlayers(playerIds);
-
-		foreach (int playerId : playerIds)
-		{
-			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
-			if (GetVehicle(character) == vehicle)
-				outCharacters.Insert(character);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! \return The vehicle a living character sits in, or null.
 	static IEntity GetVehicle(SCR_ChimeraCharacter character)
 	{
@@ -92,17 +62,6 @@ class CTR_ReturnTrip
 			return null;
 
 		return access.GetVehicle();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool IsDriver(notnull SCR_ChimeraCharacter character)
-	{
-		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
-		if (!access)
-			return false;
-
-		BaseCompartmentSlot slot = access.GetCompartment();
-		return slot && slot.GetType() == ECompartmentType.PILOT;
 	}
 
 	//------------------------------------------------------------------------------------------------

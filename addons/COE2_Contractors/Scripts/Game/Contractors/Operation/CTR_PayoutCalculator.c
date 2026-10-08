@@ -1,9 +1,9 @@
 //! Pay rules, without engine dependencies:
-//! - An operation ended early (the commander cancels the AO) pays its completed tasks like a finished one.
 //! - Only players who entered an AO are paid.
 //! - Every completed task pays its amount to every participant; failed tasks pay nothing.
 //! - Without a completed task there is no pay at all, so personal lines cannot pay on their own.
 //! - Personal lines: kills and heals add, team kills and deaths deduct. The total is never below 0.
+//! - How the operation ended sets a percent of the earnings (tasks, kills, heals); deductions stay whole.
 class CTR_PayoutCalculator
 {
 	static const string LEDGER_SOURCE = "coe2_contractors";
@@ -42,30 +42,40 @@ class CTR_PayoutCalculator
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Running operation: the total if every task still possible gets completed, with the personal lines so far. Counts
-	//! as if the player enters the AO, which they must to be paid.
-	static int CalculateIfAllCompleted(notnull CTR_Settings settings, int possibleTaskPay, notnull CTR_PlayerStats stats)
+	//! Running operation: the total if the exfil succeeds with this task pay, with the personal lines so far. Counts as if
+	//! the player enters the AO, which they must to be paid.
+	static int CalculateIfSuccess(notnull CTR_Settings settings, int taskPay, notnull CTR_PlayerStats stats)
 	{
-		if (possibleTaskPay <= 0)
+		if (taskPay <= 0)
 			return 0;
 
 		CTR_Payout payout = new CTR_Payout();
-		payout.m_iTasks = possibleTaskPay;
+		payout.m_iTasks = taskPay;
 		SetPersonalLines(settings, stats, payout);
 		return GetTotal(payout);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static CTR_Payout Calculate(notnull CTR_Settings settings, int taskPay, notnull CTR_PlayerStats stats)
+	//! \param percent Share of the earnings paid (how the operation ended); deductions stay whole.
+	static CTR_Payout Calculate(notnull CTR_Settings settings, int taskPay, notnull CTR_PlayerStats stats, int percent = 100)
 	{
 		CTR_Payout payout = new CTR_Payout();
 		if (!stats.m_bEnteredAO || taskPay <= 0)
 			return payout;
 
-		payout.m_iTasks = taskPay;
+		payout.m_iTasks = ApplyPercent(taskPay, percent);
 		SetPersonalLines(settings, stats, payout);
+		payout.m_iKills = ApplyPercent(payout.m_iKills, percent);
+		payout.m_iHeals = ApplyPercent(payout.m_iHeals, percent);
 		payout.m_iTotal = GetTotal(payout);
 		return payout;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Share of an amount, rounded down.
+	static int ApplyPercent(int amount, int percent)
+	{
+		return amount * Math.Clamp(percent, 0, 100) / 100;
 	}
 
 	//------------------------------------------------------------------------------------------------

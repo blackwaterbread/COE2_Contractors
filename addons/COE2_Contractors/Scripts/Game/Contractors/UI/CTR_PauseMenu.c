@@ -1,10 +1,9 @@
 //! "Operation" button in the pause menu while an AO runs (client): opens the operation screen, with the earnings so far
-//! during the operation, or the result and the return to base during the loot time.
+//! and the pay if the exfil succeeds, or the result after the commander cancelled.
 class CTR_PauseMenu
 {
 	static const string BUTTON_NAME = "CTR_Operation";
 	static const string BUTTON_TEXT = "#CTR-Pause_Operation";
-	static const string RETURN_HINT = "#CTR-Pause_ReturnHint";
 	protected static const ResourceName BUTTON_LAYOUT = "{9ECCD201BCF07E95}UI/layouts/Menus/PauseMenu/PauseMenuButton.layout";
 	protected static const ResourceName ICONS = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	protected static const string ICON = "score";

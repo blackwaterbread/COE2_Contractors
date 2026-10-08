@@ -41,10 +41,57 @@ class CTR_DevTools
 		params.SetTaskBuilders(builders);
 		array<ref COE_AOParams> nextParams = {params};
 		gameMode.SetNextAOParams(nextParams);
+		if (!PlaceExfilPoint(chosen.m_vCenter))
+			return "no land for an exfil point around the AO";
+
 		gameMode.ExecuteCommanderRequest(COE_ECommanderRequest.GENERATE_AO);
 
 		locationName = WidgetManager.Translate(chosen.m_sName);
 		return string.Empty;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server. Puts the exfil point the way the commander does: on land, in the middle of the allowed distance from the
+	//! edge of the AO about to be generated. Needed before GENERATE_AO: without one there is no exfil.
+	static bool PlaceExfilPoint(vector aoCenter)
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		vector pos;
+		if (!gameMode || !FindExfilPos(aoCenter, gameMode.GetAORadius(), pos))
+			return false;
+
+		gameMode.ExecuteCommanderRequest(COE_ECommanderRequest.EXFIL_POINT, pos);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A spot on land inside the world, in the middle of the allowed exfil distance from the edge of the AO.
+	static bool FindExfilPos(vector aoCenter, float aoRadius, out vector pos)
+	{
+		CTR_Settings settings = CTR_Settings.Get();
+		float distance = aoRadius + settings.m_fExfilMinDistance;
+		if (settings.m_fExfilMaxDistance > settings.m_fExfilMinDistance)
+			distance = aoRadius + (settings.m_fExfilMinDistance + settings.m_fExfilMaxDistance) / 2;
+
+		vector mins, maxs;
+		GetGame().GetWorld().GetBoundBox(mins, maxs);
+		int tries = 24;
+		float start = Math.RandomFloat(0, 360);
+		for (int i = 0; i < tries; i++)
+		{
+			float yaw = (start + i * 360 / tries) * Math.DEG2RAD;
+			pos = aoCenter + Vector(Math.Sin(yaw) * distance, 0, Math.Cos(yaw) * distance);
+			if (pos[0] < mins[0] || pos[2] < mins[2] || pos[0] > maxs[0] || pos[2] > maxs[2])
+				continue;
+
+			if (KSC_TerrainHelper.SurfaceIsWater(pos))
+				continue;
+
+			pos[1] = SCR_TerrainHelper.GetTerrainY(pos);
+			return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -123,6 +170,24 @@ class CTR_DevTools
 		}
 
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return A free spot next to the exfil point; false without one.
+	static bool GetExfilPos(out vector pos)
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		vector exfil;
+		if (!gameMode || !gameMode.CTR_GetExfilPointPos(exfil))
+			return false;
+
+		pos = exfil + "4 0 4";
+		pos[1] = SCR_TerrainHelper.GetTerrainY(pos);
+		vector free;
+		if (SCR_WorldTools.FindEmptyTerrainPosition(free, pos, 10))
+			pos = free;
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

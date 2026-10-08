@@ -1,6 +1,118 @@
 StringTable {
  ItemClassName "CustomStringTableItem"
  Items {
+  CustomStringTableItem "{6A903DF0A3783FF9}" {
+   Id "CTR-Alert_Cancelled"
+   Target_en_us "Operation cancelled"
+   Target_ko_kr "작전 취소"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A3788D05}" {
+   Id "CTR-Alert_CancelledLine"
+   Target_en_us "Everyone returns to base shortly."
+   Target_ko_kr "잠시 후 전원 기지로 귀환합니다."
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A379BD6D}" {
+   Id "CTR-Alert_EarlyExfil"
+   Target_en_us "Early exfil"
+   Target_ko_kr "조기 철수"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37E70AD}" {
+   Id "CTR-Alert_EarlyExfilLine"
+   Target_en_us "Head to the exfil point."
+   Target_ko_kr "탈출 지점으로 이동하십시오."
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37DED88}" {
+   Id "CTR-Alert_East"
+   Target_en_us "east"
+   Target_ko_kr "동"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37C6F32}" {
+   Id "CTR-Alert_North"
+   Target_en_us "north"
+   Target_ko_kr "북"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37D2232}" {
+   Id "CTR-Alert_NorthEast"
+   Target_en_us "north-east"
+   Target_ko_kr "북동"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A371501F}" {
+   Id "CTR-Alert_NorthWest"
+   Target_en_us "north-west"
+   Target_ko_kr "북서"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37ED8F4}" {
+   Id "CTR-Alert_Pursuit"
+   Target_en_us "Enemy pursuit"
+   Target_ko_kr "적 추격대"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37FAFCF}" {
+   Id "CTR-Alert_PursuitLine"
+   Target_en_us "Closing in from the %1, behind you"
+   Target_ko_kr "후방 %1쪽에서 접근 중"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A3736F67}" {
+   Id "CTR-Alert_South"
+   Target_en_us "south"
+   Target_ko_kr "남"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A372BE4B}" {
+   Id "CTR-Alert_SouthEast"
+   Target_en_us "south-east"
+   Target_ko_kr "남동"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A370364D}" {
+   Id "CTR-Alert_SouthWest"
+   Target_en_us "south-west"
+   Target_ko_kr "남서"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37087AE}" {
+   Id "CTR-Alert_West"
+   Target_en_us "west"
+   Target_ko_kr "서"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58C0D6D6B}" {
    Id "CTR-Category_Accessories"
    Target_en_us "Accessories"
@@ -201,18 +313,18 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A903DF0A376129F}" {
+   Id "CTR-Command_EarlyExfil"
+   Target_en_us "Early exfil"
+   Target_ko_kr "조기 철수"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DE9C795}" {
    Id "CTR-Hint_NoOperation"
    Target_en_us "No operation is running."
    Target_ko_kr "진행 중인 작전이 없습니다."
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DEE8BC0}" {
-   Id "CTR-Hint_ReturnTitle"
-   Target_en_us "Return to base"
-   Target_ko_kr "기지 귀환"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -241,11 +353,35 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DE230DE}" {
-   Id "CTR-Pause_ReturnHint"
-   Target_en_us "Return now: Esc > Operation"
-   Target_ko_kr "지금 귀환: Esc > 작전"
-   Modified 1787709731
+  CustomStringTableItem "{6A903DF0A374CE6D}" {
+   Id "CTR-Reason_ExfilLocked"
+   Target_en_us "The exfil has started: the exfil point stays"
+   Target_ko_kr "탈출이 시작되어 탈출 지점을 옮길 수 없습니다"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A376EB8F}" {
+   Id "CTR-Reason_ExfilStarted"
+   Target_en_us "The operation is already ending"
+   Target_ko_kr "작전이 이미 끝나는 중입니다"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A377BB3D}" {
+   Id "CTR-Reason_ExfilTooClose"
+   Target_en_us "Exfil point too close to the AO"
+   Target_ko_kr "탈출 지점이 작전구역과 너무 가깝습니다"
+   Modified 1787837961
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A3740C48}" {
+   Id "CTR-Reason_ExfilTooFar"
+   Target_en_us "Exfil point too far from the AO"
+   Target_ko_kr "탈출 지점이 작전구역에서 너무 멉니다"
+   Modified 1787837961
    Author "denev"
    LastChanged "denev"
   }
@@ -291,16 +427,8 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DCF4BBD}" {
    Id "CTR-Result_EarningsSoFar"
-   Target_en_us "Earnings so far"
-   Target_ko_kr "현재까지 수입"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DC0621C}" {
-   Id "CTR-Result_EndedEarlyNote"
-   Target_en_us "Ended before all tasks were finished: completed tasks still pay."
-   Target_ko_kr "모든 임무를 마치기 전에 끝났지만, 완료한 임무의 보수는 지급됩니다."
+   Target_en_us "Earned so far"
+   Target_ko_kr "지금까지 수입"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -308,24 +436,16 @@ StringTable {
   CustomStringTableItem "{6A8E48E58DC460D2}" {
    Id "CTR-Result_Heals"
    Target_en_us "Bandages and CPR"
-   Target_ko_kr "붕대 및 심폐소생술"
+   Target_ko_kr "붕대·심폐소생술"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DC2FBB9}" {
-   Id "CTR-Result_IfAllCompleted"
-   Target_en_us "If every task is completed"
-   Target_ko_kr "모든 임무를 완료하면"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DC23523}" {
-   Id "CTR-Result_IfEndedNow"
-   Target_en_us "If it ended now"
-   Target_ko_kr "지금 끝나면"
-   Modified 1787709731
+  CustomStringTableItem "{6A903DF0A36CC5D1}" {
+   Id "CTR-Result_IfSuccess"
+   Target_en_us "If the exfil succeeds"
+   Target_ko_kr "성공 시"
+   Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }
@@ -355,8 +475,8 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DCD0610}" {
    Id "CTR-Result_NoTaskYet"
-   Target_en_us "No task completed yet. Nothing is paid until one is."
-   Target_ko_kr "아직 완료한 임무가 없습니다. 임무를 하나 완료해야 보수가 지급됩니다."
+   Target_en_us "No task completed yet."
+   Target_ko_kr "아직 완료한 임무가 없습니다."
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -364,15 +484,15 @@ StringTable {
   CustomStringTableItem "{6A8E48E58DC1716D}" {
    Id "CTR-Result_NotEntered"
    Target_en_us "You did not enter the AO."
-   Target_ko_kr "작전 지역에 들어가지 않았습니다."
+   Target_ko_kr "작전구역에 들어가지 않았습니다."
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
   }
   CustomStringTableItem "{6A8E48E58DCC41FC}" {
    Id "CTR-Result_NotEnteredYet"
-   Target_en_us "You have not entered the AO yet. Only contractors who enter it are paid."
-   Target_ko_kr "아직 작전 지역에 들어가지 않았습니다. 작전 지역에 들어간 계약자만 보수를 받습니다."
+   Target_en_us "You have not entered the AO. Only those who enter are paid."
+   Target_ko_kr "작전구역에 들어가야 보수를 받습니다."
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -403,16 +523,16 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DC868F3}" {
    Id "CTR-Result_PaidAtEnd"
-   Target_en_us "Paid when the operation ends."
-   Target_ko_kr "보수는 작전이 끝나면 지급됩니다."
+   Target_en_us "Paid after exfil."
+   Target_ko_kr "보수는 탈출 후 지급됩니다."
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
   }
   CustomStringTableItem "{6A8E48E58DEAA819}" {
    Id "CTR-Result_Participants"
-   Target_en_us "Contractors in the AO"
-   Target_ko_kr "작전 지역의 계약자"
+   Target_en_us "Contractors deployed"
+   Target_ko_kr "투입 인원"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -433,34 +553,18 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A903DF0A3629562}" {
+   Id "CTR-Result_PayShare"
+   Target_en_us "Share of earnings paid"
+   Target_ko_kr "수입 지급 비율"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DD36D53}" {
    Id "CTR-Result_PersonalTime"
-   Target_en_us "Time in the operation"
-   Target_ko_kr "작전 참여 시간"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DC9D5E3}" {
-   Id "CTR-Result_ReturnCountdown"
-   Target_en_us "Everyone in the AO returns to base in %1"
-   Target_ko_kr "%1 후 작전 지역의 모든 인원이 기지로 귀환합니다"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DCE9AAD}" {
-   Id "CTR-Result_Returned"
-   Target_en_us "Returned to base"
-   Target_ko_kr "기지로 귀환함"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DC91249}" {
-   Id "CTR-Result_ReturnNow"
-   Target_en_us "Return to base now"
-   Target_ko_kr "지금 기지로 귀환"
+   Target_en_us "Your time"
+   Target_ko_kr "참여 시간"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -468,7 +572,7 @@ StringTable {
   CustomStringTableItem "{6A8E48E58DDDA8F0}" {
    Id "CTR-Result_Shots"
    Target_en_us "Shots fired"
-   Target_ko_kr "발사한 탄"
+   Target_ko_kr "사격 수"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -537,11 +641,11 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DEB6C35}" {
-   Id "CTR-Result_TeamIfEndedNow"
-   Target_en_us "Team total if it ended now"
-   Target_ko_kr "지금 끝날 경우 팀 합계"
-   Modified 1787709731
+  CustomStringTableItem "{6A903DF0A36DC5DC}" {
+   Id "CTR-Result_TeamIfSuccess"
+   Target_en_us "Team, if the exfil succeeds"
+   Target_ko_kr "성공 시 팀 합계"
+   Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }
@@ -555,9 +659,17 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DE8107E}" {
    Id "CTR-Result_TeamTotal"
-   Target_en_us "Total earned"
-   Target_ko_kr "팀 총수입"
+   Target_en_us "Team earnings"
+   Target_ko_kr "팀 수입"
    Modified 1787709731
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A360E918}" {
+   Id "CTR-Result_TitleAbandoned"
+   Target_en_us "Exfil abandoned"
+   Target_ko_kr "탈출 포기"
+   Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }
@@ -577,11 +689,11 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
-  CustomStringTableItem "{6A8E48E58DB4EE2E}" {
-   Id "CTR-Result_TitleEndedEarly"
-   Target_en_us "Operation ended early"
-   Target_ko_kr "작전 조기 종료"
-   Modified 1787709731
+  CustomStringTableItem "{6A903DF0A3636B55}" {
+   Id "CTR-Result_TitleEarlyExfil"
+   Target_en_us "Early exfil"
+   Target_ko_kr "조기 철수"
+   Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }
@@ -601,6 +713,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A903DF0A3602169}" {
+   Id "CTR-Result_TitleMissing"
+   Target_en_us "Missing in action"
+   Target_ko_kr "작전 중 실종(MIA)"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A8E48E58DC6F850}" {
    Id "CTR-Result_Total"
    Target_en_us "Total"
@@ -611,56 +731,8 @@ StringTable {
   }
   CustomStringTableItem "{6A8E48E58DDCE268}" {
    Id "CTR-Result_YourOperation"
-   Target_en_us "Your operation"
-   Target_ko_kr "나의 작전"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE10623}" {
-   Id "CTR-Return_AtBase"
-   Target_en_us "You are already at the base."
-   Target_ko_kr "이미 기지에 있습니다."
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE391D7}" {
-   Id "CTR-Return_Dead"
-   Target_en_us "You are dead: you respawn at the base."
-   Target_ko_kr "사망했습니다. 기지에서 다시 투입됩니다."
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE63463}" {
-   Id "CTR-Return_Failed"
-   Target_en_us "The return to base failed."
-   Target_ko_kr "기지 귀환에 실패했습니다."
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE6CE08}" {
-   Id "CTR-Return_HudTitle"
-   Target_en_us "RETURNING TO BASE"
-   Target_ko_kr "기지로 귀환 중"
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE059F2}" {
-   Id "CTR-Return_NotDriver"
-   Target_en_us "Only the driver takes the vehicle back. Get out to return on your own."
-   Target_ko_kr "차량은 운전자만 가지고 돌아갈 수 있습니다. 혼자 귀환하려면 차량에서 내리세요."
-   Modified 1787709731
-   Author "denev"
-   LastChanged "denev"
-  }
-  CustomStringTableItem "{6A8E48E58DE2E258}" {
-   Id "CTR-Return_NotNow"
-   Target_en_us "You can only return once the operation is over."
-   Target_ko_kr "작전이 끝난 뒤에만 귀환할 수 있습니다."
+   Target_en_us "Your record"
+   Target_ko_kr "내 기록"
    Modified 1787709731
    Author "denev"
    LastChanged "denev"
@@ -718,6 +790,78 @@ StringTable {
    Target_en_us "Weapon Shop"
    Target_ko_kr "무기 상점"
    Modified 1787709731
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A36505CE}" {
+   Id "CTR-Timer_Cancel"
+   Target_en_us "Cancelled, return in"
+   Target_ko_kr "작전 취소 — 귀환까지"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A366069B}" {
+   Id "CTR-Timer_Exfil"
+   Target_en_us "Exfil in"
+   Target_ko_kr "퇴출까지"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A364BBEC}" {
+   Id "CTR-Timer_Hold"
+   Target_en_us "Return in"
+   Target_ko_kr "귀환까지"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A361B268}" {
+   Id "CTR-Timer_Operation"
+   Target_en_us "Operation"
+   Target_ko_kr "작전 시간"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A366D87F}" {
+   Id "CTR-Timer_Present"
+   Target_en_us "At exfil point"
+   Target_ko_kr "탈출 지점"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A3678816}" {
+   Id "CTR-Timer_PresentValue"
+   Target_en_us "%1 / %2 (%3 needed)"
+   Target_ko_kr "%1 / %2 (%3명 필요)"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A365EF56}" {
+   Id "CTR-Timer_Pursuit"
+   Target_en_us "Enemy pursuit"
+   Target_ko_kr "적 추격대"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37B6400}" {
+   Id "CTR-Timer_PursuitLast"
+   Target_en_us "Wave %1"
+   Target_ko_kr "%1파"
+   Modified 1787837960
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A903DF0A37AAF28}" {
+   Id "CTR-Timer_PursuitValue"
+   Target_en_us "Wave %1 / next %2"
+   Target_ko_kr "%1파 / 다음 파 %2"
+   Modified 1787837960
    Author "denev"
    LastChanged "denev"
   }

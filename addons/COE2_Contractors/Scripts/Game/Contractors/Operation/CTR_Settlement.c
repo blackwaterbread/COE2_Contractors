@@ -6,7 +6,7 @@ class CTR_PayEntry : Managed
 	ref CTR_PlayerStats m_Stats;
 	ref CTR_Payout m_Payout;
 	//! In progress only.
-	int m_iTotalIfAllCompleted;
+	int m_iTotalIfSuccess;
 	CTR_EPayStatus m_eStatus;
 	bool m_bHasBalance;
 	int m_iBalance;
@@ -49,9 +49,12 @@ class CTR_Settlement : Managed
 
 	protected ref CTR_Settings m_Settings;
 	protected string m_sOperationId;
-	protected bool m_bFinished;
+	protected CTR_EOperationEnd m_eEnd;
+	protected int m_iPayPercent;
 	//! Live view of a running operation; never paid.
 	protected bool m_bInProgress;
+	//! In progress: the exfil has started, so only the tasks completed so far pay if it succeeds.
+	protected bool m_bExfil;
 	protected int m_iDurationSeconds;
 	protected int m_iTaskPay;
 	protected ref array<ref CTR_AreaInfo> m_aAreas;
@@ -64,11 +67,12 @@ class CTR_Settlement : Managed
 	protected ref ScriptInvokerBase<CTR_SettlementDoneMethod> m_OnDone = new ScriptInvokerBase<CTR_SettlementDoneMethod>();
 
 	//------------------------------------------------------------------------------------------------
-	void CTR_Settlement(notnull CTR_Settings settings, string operationId, bool finished, int durationSeconds, notnull array<ref CTR_AreaInfo> areas, notnull array<ref CTR_TaskOutcome> tasks)
+	void CTR_Settlement(notnull CTR_Settings settings, string operationId, CTR_EOperationEnd end, int durationSeconds, notnull array<ref CTR_AreaInfo> areas, notnull array<ref CTR_TaskOutcome> tasks)
 	{
 		m_Settings = settings;
 		m_sOperationId = operationId;
-		m_bFinished = finished;
+		m_eEnd = end;
+		m_iPayPercent = settings.GetPayPercent(end);
 		m_iDurationSeconds = durationSeconds;
 		m_aAreas = areas;
 		m_aTasks = tasks;
@@ -76,11 +80,13 @@ class CTR_Settlement : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! What everyone would get if the running operation ended now (CTR_PayoutCalculator.CalculateSoFar). Not for Pay().
-	static CTR_Settlement CreateInProgress(notnull CTR_Settings settings, string operationId, int durationSeconds, notnull array<ref CTR_AreaInfo> areas, notnull array<ref CTR_TaskOutcome> tasks)
+	//! The running operation: the lines so far (CTR_PayoutCalculator.CalculateSoFar) and what everyone gets if the exfil
+	//! succeeds. Not for Pay(). \param exfil The exfil has started: tasks still open no longer count.
+	static CTR_Settlement CreateInProgress(notnull CTR_Settings settings, string operationId, bool exfil, int durationSeconds, notnull array<ref CTR_AreaInfo> areas, notnull array<ref CTR_TaskOutcome> tasks)
 	{
-		CTR_Settlement settlement = new CTR_Settlement(settings, operationId, false, durationSeconds, areas, tasks);
+		CTR_Settlement settlement = new CTR_Settlement(settings, operationId, CTR_EOperationEnd.COMPLETE, durationSeconds, areas, tasks);
 		settlement.m_bInProgress = true;
+		settlement.m_bExfil = exfil;
 		return settlement;
 	}
 
@@ -109,9 +115,9 @@ class CTR_Settlement : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsFinished()
+	CTR_EOperationEnd GetEnd()
 	{
-		return m_bFinished;
+		return m_eEnd;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -148,17 +154,22 @@ class CTR_Settlement : Managed
 			entry.m_aPlayerIds.Insert(playerId);
 		}
 
-		int possibleTaskPay = CTR_PayoutCalculator.SumRewardsStillPossible(m_aTasks);
+		// Before the exfil every task that has not failed can still be completed; after it starts, open tasks still count
+		// once completed, but the screen shows what is certain.
+		int successTaskPay = m_iTaskPay;
+		if (!m_bExfil)
+			successTaskPay = CTR_PayoutCalculator.SumRewardsStillPossible(m_aTasks);
+
 		foreach (CTR_PayEntry entry : m_aEntries)
 		{
 			if (!m_bInProgress)
 			{
-				entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats);
+				entry.m_Payout = CTR_PayoutCalculator.Calculate(m_Settings, m_iTaskPay, entry.m_Stats, m_iPayPercent);
 				continue;
 			}
 
 			entry.m_Payout = CTR_PayoutCalculator.CalculateSoFar(m_Settings, m_iTaskPay, entry.m_Stats);
-			entry.m_iTotalIfAllCompleted = CTR_PayoutCalculator.CalculateIfAllCompleted(m_Settings, possibleTaskPay, entry.m_Stats);
+			entry.m_iTotalIfSuccess = CTR_PayoutCalculator.CalculateIfSuccess(m_Settings, successTaskPay, entry.m_Stats);
 		}
 	}
 
@@ -296,15 +307,16 @@ class CTR_Settlement : Managed
 
 	//------------------------------------------------------------------------------------------------
 	//! The result screen of a player; also for players who joined after the operation ended.
-	CTR_OperationResult BuildResult(int playerId, int returnDelaySeconds)
+	CTR_OperationResult BuildResult(int playerId)
 	{
 		CTR_OperationResult result = new CTR_OperationResult();
 		result.m_sOperationId = m_sOperationId;
 		result.m_bInProgress = m_bInProgress;
-		result.m_bFinished = m_bFinished;
+		result.m_bExfil = m_bExfil;
+		result.m_eEnd = m_eEnd;
+		result.m_iPayPercent = m_iPayPercent;
 		result.m_iDurationSeconds = m_iDurationSeconds;
 		result.m_sCurrency = m_Settings.m_sCurrency;
-		result.m_iReturnDelaySeconds = returnDelaySeconds;
 
 		foreach (CTR_AreaInfo area : m_aAreas)
 		{
@@ -321,14 +333,17 @@ class CTR_Settlement : Managed
 			if (entry.m_Stats.m_bEnteredAO)
 				result.m_iParticipants++;
 
-			result.m_iTeamPay += entry.m_Payout.m_iTotal;
+			if (!m_bInProgress)
+				result.m_iTeamPay += entry.m_Payout.m_iTotal;
+			else if (entry.m_Stats.m_bEnteredAO)
+				result.m_iTeamPay += entry.m_iTotalIfSuccess;
 
 			if (!entry.m_aPlayerIds.Contains(playerId))
 				continue;
 
 			result.m_Stats = entry.m_Stats;
 			result.m_Payout = entry.m_Payout;
-			result.m_iTotalIfAllCompleted = entry.m_iTotalIfAllCompleted;
+			result.m_iTotalIfSuccess = entry.m_iTotalIfSuccess;
 			result.m_ePayStatus = entry.m_eStatus;
 			result.m_bHasBalance = entry.m_bHasBalance;
 			result.m_iBalance = entry.m_iBalance;

@@ -1,16 +1,21 @@
 #ifdef ENABLE_DIAG
 //! Diag builds only: "#ctr <action>" in the chat (admin) to try an operation without playing it through.
-//!   #ctr ao [n]    generate an AO with n random tasks (default 2) away from the base
+//!   #ctr ao [n]    put an exfil point and generate an AO with n random tasks (default 2) away from the base
 //!   #ctr go        move to the edge of the running AO (counts as entering it)
-//!   #ctr win       complete every task: pay, result screen, loot time, return to base
-//!   #ctr fail      fail every task: the operation finishes without pay
-//!   #ctr cancel    cancel the AO like the commander does
+//!   #ctr win       complete every task: the exfil starts
+//!   #ctr fail      fail every task: the operation fails, everyone returns
+//!   #ctr cancel    cancel the operation like the commander does (delayed return)
+//!   #ctr early     order the early exfil
+//!   #ctr exfil     move next to the exfil point
+//!   #ctr exfilnow  the exfil succeeds now
+//!   #ctr mia       the exfil countdown runs out now (missing in action)
+//!   #ctr cd <s>    set the exfil countdown to s seconds
 //!   #ctr base      move next to the base arsenal shops
 //!   #ctr cash [n]  credit n cash to yourself (default 1000)
 class CTR_DevCommand : ScrServerCommand
 {
 	static const string KEYWORD = "ctr";
-	protected static const string HELP = "#ctr ao [tasks] | go | win | fail | cancel | base | cash [amount]";
+	protected static const string HELP = "#ctr ao [tasks] | go | win | fail | cancel | early | exfil | exfilnow | mia | cd <s> | base | cash [amount]";
 	protected static const int DEFAULT_TASKS = 2;
 	protected static const int DEFAULT_CASH = 1000;
 
@@ -63,6 +68,11 @@ class CTR_DevCommand : ScrServerCommand
 			case "win": return FinishTasks(SCR_ETaskState.COMPLETED, "completed");
 			case "fail": return FinishTasks(SCR_ETaskState.FAILED, "failed");
 			case "cancel": return Cancel();
+			case "early": return EarlyExfil();
+			case "exfil": return GoToExfil(playerId);
+			case "exfilnow": return ExfilNow();
+			case "mia": return SetCountdown(0);
+			case "cd": return SetCountdown(amount);
 			case "base": return Base(playerId);
 			case "cash": return Cash(playerId, amount);
 		}
@@ -111,8 +121,54 @@ class CTR_DevCommand : ScrServerCommand
 		if (!gameMode || gameMode.COE_GetState() == COE_EGameModeState.INTERMISSION)
 			return Result("no AO is running", false);
 
-		gameMode.ExecuteCommanderRequest(COE_ECommanderRequest.CANCEL_AO);
-		return Result("AO cancelled", true);
+		gameMode.CTR_RequestCancel();
+		return Result("operation cancelled", true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult EarlyExfil()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_StartEarlyExfil())
+			return Result("no running operation before its exfil, or no exfil point", false);
+
+		gameMode.CTR_AlertAll(CTR_EAlert.EARLY_EXFIL, 0);
+		return Result("early exfil ordered", true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult GoToExfil(int playerId)
+	{
+		vector pos;
+		if (!CTR_DevTools.GetExfilPos(pos))
+			return Result("no exfil point", false);
+
+		return TeleportResult(playerId, pos, "you are at the exfil point");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult ExfilNow()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_GetExfil())
+			return Result("no exfil running (#ctr win or #ctr early)", false);
+
+		gameMode.CTR_OnExfilReached();
+		return Result("exfil reached", true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected ScrServerCmdResult SetCountdown(int seconds)
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.CTR_GetExfil())
+			return Result("no exfil running (#ctr win or #ctr early)", false);
+
+		if (seconds < 0)
+			return Result("#ctr cd <seconds>", false);
+
+		gameMode.CTR_SetExfilSecondsLeft(seconds);
+		return Result(string.Format("exfil countdown: %1 s", seconds), true);
 	}
 
 	//------------------------------------------------------------------------------------------------

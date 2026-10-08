@@ -6,10 +6,9 @@ modded class COE_PlayerController
 {
 	protected static ref ScriptInvokerBase<CTR_OperationResultMethod> s_CTR_OnOperationResult;
 	protected static ref CTR_OperationResult s_CTR_LastResult;
-	protected ref CTR_ReturnCountdownHud m_CTR_ReturnHud;
-	//! Client: tick when the loot time of the last operation ends; 0 = no return pending.
-	protected int m_iCTR_ReturnTick;
-	//! Server: last operation screen or return request of this player, against floods.
+	//! Client: the operation timer on the HUD.
+	protected ref CTR_OperationTimerHud m_CTR_TimerHud;
+	//! Server: last operation screen request of this player, against floods.
 	protected int m_iCTR_LastRequestTick;
 
 	protected static const int CTR_REQUEST_INTERVAL_MS = 500;
@@ -32,35 +31,26 @@ modded class COE_PlayerController
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Client: the return countdown of the last result, or null.
-	CTR_ReturnCountdownHud CTR_GetReturnCountdown()
+	//! Client: the operation timer of the local player, or null before their first spawn.
+	CTR_OperationTimerHud CTR_GetTimerHud()
 	{
-		return m_CTR_ReturnHud;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Client: seconds of loot time left before everyone in the AO returns to base, 0 when no return is pending.
-	int CTR_GetReturnSecondsLeft()
-	{
-		if (m_iCTR_ReturnTick == 0)
-			return 0;
-
-		// The AO also ends earlier: when nobody is left in it, or when the commander ends it.
-		COE_GameMode gameMode = COE_GameMode.GetInstance();
-		int remaining = Math.Ceil((m_iCTR_ReturnTick - System.GetTickCount()) / 1000.0);
-		if (remaining <= 0 || !gameMode || gameMode.COE_GetState() != COE_EGameModeState.EXECUTION)
-		{
-			m_iCTR_ReturnTick = 0;
-			return 0;
-		}
-
-		return remaining;
+		return m_CTR_TimerHud;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	bool CTR_HasMainEntity()
 	{
 		return m_MainEntity != null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The operation timer is built on the HUD once the local player controls a character.
+	override void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		super.OnControlledEntityChanged(from, to);
+
+		if (to && this == GetGame().GetPlayerController() && (!m_CTR_TimerHud || !m_CTR_TimerHud.IsBuilt()))
+			m_CTR_TimerHud = CTR_OperationTimerHud.Create();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -85,7 +75,7 @@ modded class COE_PlayerController
 		s_CTR_LastResult = result;
 		Print(string.Format("[CTR] Operation result received: %1, pay %2, status %3", result.m_sOperationId, result.m_Payout.m_iTotal, typename.EnumToString(CTR_EPayStatus, result.m_ePayStatus)));
 		CTR_GetOnOperationResult().Invoke(result);
-		CTR_ShowOperation(result);
+		CTR_ResultDialog.Open(result);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -126,81 +116,35 @@ modded class COE_PlayerController
 
 		CTR_OperationResult result = CTR_OperationResult.FromJson(json);
 		if (result)
-			CTR_ShowOperation(result);
+			CTR_ResultDialog.Open(result);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Opens the operation screen; a result starts or corrects the countdown of the loot time.
-	protected void CTR_ShowOperation(notnull CTR_OperationResult result)
+	//! Server: shows an alert at the top of the owner's screen.
+	void CTR_SendAlert(CTR_EAlert alert, int param)
 	{
-		if (!result.m_bInProgress)
-		{
-			m_iCTR_ReturnTick = 0;
-			if (result.m_iReturnDelaySeconds > 0)
-				m_iCTR_ReturnTick = System.GetTickCount() + result.m_iReturnDelaySeconds * 1000;
-
-			// Stays on the HUD when the result screen is closed.
-			m_CTR_ReturnHud = CTR_ReturnCountdownHud.Create(this);
-		}
-
-		CTR_ResultDialog.Open(result);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Client: asks to return to base during the loot time.
-	void CTR_RequestReturnNow()
-	{
-		Rpc(CTR_RpcAsk_ReturnNow);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void CTR_RpcAsk_ReturnNow()
-	{
-		if (!CTR_CheckRequestRate())
-			return;
-
-		CTR_EReturnStatus status = CTR_EReturnStatus.NOT_NOW;
-		COE_GameMode gameMode = COE_GameMode.GetInstance();
-		if (gameMode)
-			status = gameMode.CTR_ReturnNow(GetPlayerId());
-
-		Rpc(CTR_RpcDo_ReturnStatus, status);
+		Rpc(CTR_RpcDo_Alert, alert, param);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void CTR_RpcDo_ReturnStatus(int status)
+	protected void CTR_RpcDo_Alert(int alert, int param)
 	{
-		CTR_ResultDialog dialog = CTR_ResultDialog.GetOpen();
-		if (status == CTR_EReturnStatus.OK)
-		{
-			// Out of the way of the fade to base.
-			if (dialog)
-				dialog.Close();
-
-			return;
-		}
-
-		string text = CTR_GetReturnStatusText(status);
-		if (dialog)
-			dialog.ShowReturnStatus(text);
-		else
-			SCR_HintManagerComponent.ShowCustomHint(text, "#CTR-Hint_ReturnTitle", 4);
+		CTR_AlertHud.Show(alert, param);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static string CTR_GetReturnStatusText(int status)
+	//! Server: shows a short hint to the owner (a localization key).
+	void CTR_SendHint(string text)
 	{
-		switch (status)
-		{
-			case CTR_EReturnStatus.NOT_NOW: return "#CTR-Return_NotNow";
-			case CTR_EReturnStatus.DEAD: return "#CTR-Return_Dead";
-			case CTR_EReturnStatus.NOT_DRIVER: return "#CTR-Return_NotDriver";
-			case CTR_EReturnStatus.AT_BASE: return "#CTR-Return_AtBase";
-		}
+		Rpc(CTR_RpcDo_Hint, text);
+	}
 
-		return "#CTR-Return_Failed";
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void CTR_RpcDo_Hint(string text)
+	{
+		SCR_HintManagerComponent.ShowCustomHint(text, "#COE-Action_SetExfilPoint", 5);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -217,7 +161,7 @@ modded class COE_PlayerController
 
 	//------------------------------------------------------------------------------------------------
 	//! When the AO ends, players in a vehicle travel with the vehicle, and players already at the base stay where they
-	//! are (e.g. those who returned during the loot time).
+	//! are.
 	override void RequestFastTravel(vector pos, float rotation = 0, float searchRadius = 10)
 	{
 		// An empty m_MainEntity is handled in COE2Fixes/CTR_COE2MainEntity.c.

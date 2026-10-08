@@ -1,28 +1,21 @@
 //! Operation screen (client): earnings, personal stats, the operation's tasks with their grid position and outcome,
-//! and team totals. While the operation runs it shows what the player would get if it ended now. After it, a countdown
-//! shows when everyone left in the AO returns to base, with a button to return now; the screen stays until it is closed.
+//! and team totals. While the operation runs it shows the earnings so far and the pay if the exfil succeeds; after it,
+//! how it ended and what was paid. The screen stays until it is closed.
 class CTR_ResultDialog : MRX_ScriptedDialog
 {
 	protected static const string DIALOG_TAG = "CTR_Result";
-	protected static const string ACTION_RETURN = "return";
 	protected static const float WINDOW_WIDTH = 900;
 	//! Room for the title, header and footer; the list takes the rest of the screen height.
 	protected static const float RESERVED_HEIGHT = 370;
 	protected static const float MIN_LIST_HEIGHT = 240;
 	protected static const float MAX_LIST_HEIGHT = 640;
 	protected static const int SECTION_FONT_SIZE = 24;
-	//! The return countdown must be noticed: everyone is moved when it runs out.
-	protected static const int COUNTDOWN_FONT_SIZE = 34;
-	protected static const int RETURN_BUTTON_FONT_SIZE = 24;
 	protected static const int COLOR_GAIN = 0xFF80D080;
 	protected static const int COLOR_LOSS = 0xFFE06060;
 	protected static const int COLOR_MUTED = 0xFFA0A0A0;
 	protected static const int COLOR_SECTION = 0xFFE0C060;
 
 	protected ref CTR_OperationResult m_Result;
-	protected TextWidget m_wCountdown;
-	protected SCR_ButtonTextComponent m_ReturnButton;
-	protected TextWidget m_wReturnStatus;
 	protected VerticalLayoutWidget m_wList;
 	//! In progress: the times count up while the screen is open.
 	protected int m_iOpenTick;
@@ -55,21 +48,25 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static string GetTitle(CTR_OperationResult result)
+	CTR_OperationResult GetResult()
+	{
+		return m_Result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static string GetTitle(notnull CTR_OperationResult result)
 	{
 		if (result.m_bInProgress)
 			return "#CTR-Result_TitleInProgress";
 
-		if (!result.m_bFinished)
+		switch (result.m_eEnd)
 		{
-			if (result.IsSuccess())
-				return "#CTR-Result_TitleEndedEarly";
-
-			return "#CTR-Result_TitleCancelled";
+			case CTR_EOperationEnd.EARLY_EXFIL: return "#CTR-Result_TitleEarlyExfil";
+			case CTR_EOperationEnd.FAILED: return "#CTR-Result_TitleFailed";
+			case CTR_EOperationEnd.MISSING: return "#CTR-Result_TitleMissing";
+			case CTR_EOperationEnd.ABANDONED: return "#CTR-Result_TitleAbandoned";
+			case CTR_EOperationEnd.CANCELLED: return "#CTR-Result_TitleCancelled";
 		}
-
-		if (!result.IsSuccess())
-			return "#CTR-Result_TitleFailed";
 
 		return "#CTR-Result_TitleComplete";
 	}
@@ -85,10 +82,6 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		{
 			TextWidget note = AddHeaderLine("#CTR-Result_PaidAtEnd");
 			SetColor(note, COLOR_MUTED);
-		}
-		else
-		{
-			AddReturnHeader();
 		}
 
 		m_wList = CreateScrollList(m_wRows, Math.Clamp(GetScreenHeight() - RESERVED_HEIGHT, MIN_LIST_HEIGHT, MAX_LIST_HEIGHT));
@@ -129,105 +122,13 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Countdown of the loot time and the button to return now.
-	protected void AddReturnHeader()
-	{
-		m_wCountdown = AddHeaderLine(string.Empty);
-		if (!m_wCountdown)
-			return;
-
-		m_wCountdown.SetExactFontSize(COUNTDOWN_FONT_SIZE);
-		SetColor(m_wCountdown, COLOR_SECTION);
-		AlignableSlot.SetPadding(m_wCountdown, 0, 6, 0, 6);
-
-		if (GetReturnSecondsLeft() > 0)
-		{
-			Widget row = CreateLayout(WidgetType.HorizontalLayoutWidgetTypeID, m_wHeader);
-			m_ReturnButton = AddButton(row, "#CTR-Result_ReturnNow", ACTION_RETURN);
-			if (m_ReturnButton)
-			{
-				TextWidget buttonText = TextWidget.Cast(m_ReturnButton.GetRootWidget().FindAnyWidget("Text"));
-				if (buttonText)
-					buttonText.SetExactFontSize(RETURN_BUTTON_FONT_SIZE);
-			}
-
-			m_wReturnStatus = CreateText(row, string.Empty);
-			SetColor(m_wReturnStatus, COLOR_LOSS);
-			AlignableSlot.SetPadding(m_wReturnStatus, 16, 0, 0, 0);
-			AlignableSlot.SetVerticalAlign(m_wReturnStatus, LayoutVerticalAlign.Center);
-			GetGame().GetCallqueue().CallLater(UpdateCountdown, 250, true);
-		}
-
-		UpdateCountdown();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected static int GetReturnSecondsLeft()
-	{
-		COE_PlayerController controller = COE_PlayerController.GetInstance();
-		if (!controller)
-			return 0;
-
-		return controller.CTR_GetReturnSecondsLeft();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected void OnRowAction(string action)
-	{
-		if (action != ACTION_RETURN)
-			return;
-
-		COE_PlayerController controller = COE_PlayerController.GetInstance();
-		if (controller)
-			controller.CTR_RequestReturnNow();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Why the return to base was refused.
-	void ShowReturnStatus(string text)
-	{
-		if (m_wReturnStatus)
-			m_wReturnStatus.SetText(text);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
-		GetGame().GetCallqueue().Remove(UpdateCountdown);
 		GetGame().GetCallqueue().Remove(UpdateElapsed);
 		if (s_Instance == this)
 			s_Instance = null;
 
 		super.OnMenuClose();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateCountdown()
-	{
-		if (!m_wCountdown)
-			return;
-
-		if (m_Result.m_iReturnDelaySeconds <= 0)
-		{
-			m_wCountdown.SetText(string.Empty);
-			return;
-		}
-
-		int remaining = GetReturnSecondsLeft();
-		if (remaining > 0)
-		{
-			m_wCountdown.SetText(WidgetManager.Translate("#CTR-Result_ReturnCountdown", FormatDuration(remaining)));
-			return;
-		}
-
-		m_wCountdown.SetText("#CTR-Result_Returned");
-		if (m_ReturnButton)
-			m_ReturnButton.GetRootWidget().SetVisible(false);
-
-		if (m_wReturnStatus)
-			m_wReturnStatus.SetText(string.Empty);
-
-		GetGame().GetCallqueue().Remove(UpdateCountdown);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,18 +162,17 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 			if (stats.m_bEnteredAO)
 				AddPayLines();
 
-			AddLine("#CTR-Result_IfEndedNow", FormatAmount(payout.m_iTotal, m_Result.m_sCurrency), GetAmountColor(payout.m_iTotal));
-			AddLine("#CTR-Result_IfAllCompleted", FormatAmount(m_Result.m_iTotalIfAllCompleted, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfAllCompleted), SECTION_FONT_SIZE);
+			AddLine("#CTR-Result_IfSuccess", FormatAmount(m_Result.m_iTotalIfSuccess, m_Result.m_sCurrency), GetAmountColor(m_Result.m_iTotalIfSuccess), SECTION_FONT_SIZE);
 			return;
 		}
 
 		AddSection("#CTR-Result_Earnings");
-		if (!m_Result.m_bFinished)
-			AddLine("#CTR-Result_EndedEarlyNote", string.Empty, COLOR_MUTED);
+		if (m_Result.m_iPayPercent != 100)
+			AddLine("#CTR-Result_PayShare", m_Result.m_iPayPercent.ToString() + "%", COLOR_LOSS);
 
 		if (!stats.m_bEnteredAO)
 			AddLine("#CTR-Result_NotEntered", string.Empty, COLOR_MUTED);
-		else if (payout.m_iTasks <= 0)
+		else if (m_Result.CountCompletedTasks() == 0)
 			AddLine("#CTR-Result_NoTask", string.Empty, COLOR_MUTED);
 		else
 			AddPayLines();
@@ -282,15 +182,18 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Completed tasks and the personal lines.
+	//! Completed tasks and the personal lines; after the operation the earnings at the share paid.
 	protected void AddPayLines()
 	{
 		CTR_Payout payout = m_Result.m_Payout;
 		CTR_PlayerStats stats = m_Result.m_Stats;
 		foreach (CTR_TaskOutcome task : m_Result.m_aTasks)
 		{
-			if (task.m_bCompleted)
-				AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(task.m_iAmount, m_Result.m_sCurrency), COLOR_GAIN);
+			if (!task.m_bCompleted)
+				continue;
+
+			int amount = CTR_PayoutCalculator.ApplyPercent(task.m_iAmount, m_Result.m_iPayPercent);
+			AddLine(WidgetManager.Translate(task.m_sName), FormatAmount(amount, m_Result.m_sCurrency), GetAmountColor(amount));
 		}
 
 		AddCountLine("#CTR-Result_Kills", stats.m_iKills, payout.m_iKills);
@@ -358,14 +261,12 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 				outcome = "#CTR-Result_TaskCompleted";
 				color = COLOR_GAIN;
 			}
-			else if (m_Result.m_bInProgress && !task.m_bFailed)
-			{
-				outcome = "#CTR-Result_TaskInProgress";
-				color = COLOR_MUTED;
-			}
-			else if (!m_Result.m_bFinished && !task.m_bFailed)
+			else if (!task.m_bFailed)
 			{
 				outcome = "#CTR-Result_TaskNotFinished";
+				if (m_Result.m_bInProgress)
+					outcome = "#CTR-Result_TaskInProgress";
+
 				color = COLOR_MUTED;
 			}
 
@@ -384,7 +285,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddLine("#CTR-Result_TasksCompleted", string.Format("%1 / %2", m_Result.CountCompletedTasks(), m_Result.m_aTasks.Count()));
 		AddLine("#CTR-Result_Participants", m_Result.m_iParticipants.ToString());
 		if (m_Result.m_bInProgress)
-			AddLine("#CTR-Result_TeamIfEndedNow", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
+			AddLine("#CTR-Result_TeamIfSuccess", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		else
 			AddLine("#CTR-Result_TeamTotal", MRX_TextFormat.Money(m_Result.m_iTeamPay, m_Result.m_sCurrency));
 		m_wOperationTime = AddLine("#CTR-Result_OperationTime", FormatDuration(m_Result.m_iDurationSeconds + GetElapsedSeconds()));
@@ -458,7 +359,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		if (hours > 0)
 			return string.Format("%1:%2:%3", hours, minutes.ToString(2), rest.ToString(2));
 
-		return string.Format("%1:%2", minutes, rest.ToString(2));
+		return string.Format("%1:%2", minutes.ToString(2), rest.ToString(2));
 	}
 
 	//------------------------------------------------------------------------------------------------

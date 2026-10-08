@@ -100,33 +100,53 @@ enum CTR_EPayStatus
 }
 
 //------------------------------------------------------------------------------------------------
+//! How an operation ended.
+enum CTR_EOperationEnd
+{
+	//! The players reached the exfil point after every task was finished.
+	COMPLETE,
+	//! The players reached the exfil point after the commander ordered an early exfil, with tasks left.
+	EARLY_EXFIL,
+	//! Every task failed: no exfil, everyone returns at once.
+	FAILED,
+	//! The exfil countdown ran out.
+	MISSING,
+	//! The commander cancelled during the exfil.
+	ABANDONED,
+	//! The commander cancelled before the exfil.
+	CANCELLED
+}
+
+//------------------------------------------------------------------------------------------------
 //! The result screen of one player, or the state of a running operation so far.
 class CTR_OperationResult : Managed
 {
 	string m_sOperationId;
-	//! The operation still runs: the pay is what it would be if it ended now, nothing is paid yet.
+	//! The operation still runs: nothing is paid yet.
 	bool m_bInProgress;
-	//! All tasks finished (false: ended early by the commander).
-	bool m_bFinished;
+	//! In progress: the exfil has started.
+	bool m_bExfil;
+	//! After the operation: how it ended (CTR_EOperationEnd).
+	int m_eEnd;
+	//! After the operation: percent of the earnings paid (deductions stay whole).
+	int m_iPayPercent = 100;
 	int m_iDurationSeconds;
 	ref array<ref CTR_AreaInfo> m_aAreas = {};
 	ref array<ref CTR_TaskOutcome> m_aTasks = {};
 
 	//! Players who entered an AO.
 	int m_iParticipants;
-	//! Sum of all totals.
+	//! Sum of all totals; in progress, of the totals if the exfil succeeds of the players who entered an AO.
 	int m_iTeamPay;
 
 	ref CTR_PlayerStats m_Stats;
 	ref CTR_Payout m_Payout;
-	//! In progress: the total if every task that has not failed gets completed, with the personal lines so far.
-	int m_iTotalIfAllCompleted;
+	//! In progress: the total if the exfil succeeds (CTR_PayoutCalculator.CalculateIfSuccess).
+	int m_iTotalIfSuccess;
 	CTR_EPayStatus m_ePayStatus;
 	string m_sCurrency;
 	bool m_bHasBalance;
 	int m_iBalance;
-	//! Seconds until everyone left in the AO returns to base (loot time); 0 = no return.
-	int m_iReturnDelaySeconds;
 
 	//------------------------------------------------------------------------------------------------
 	int CountCompletedTasks()
@@ -139,13 +159,6 @@ class CTR_OperationResult : Managed
 		}
 
 		return count;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Paid at least one completed task, also when ended early.
-	bool IsSuccess()
-	{
-		return CountCompletedTasks() > 0;
 	}
 
 	//------------------------------------------------------------------------------------------------

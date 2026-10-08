@@ -9,6 +9,7 @@ class CTR_PayoutTests
 	{
 		runner.Add(new CTR_Test_TaskPricing());
 		runner.Add(new CTR_Test_PayoutRules());
+		runner.Add(new CTR_Test_PayPercent());
 		runner.Add(new CTR_Test_StatMapping());
 		runner.Add(new CTR_Test_AIKills());
 		runner.Add(new CTR_Test_CprTime());
@@ -92,7 +93,13 @@ class CTR_Test_TaskPricing : CTR_TestCase
 		CheckString(loaded.m_sCurrency, MRX_Settings.DEFAULT_CURRENCY, "config currency");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.CAPTIVE_TASK), 18000, "config capture officer");
 		CheckInt(loaded.GetTaskReward("COE_EnemyOfficerTaskBuilder", CTR_PayoutTests.KILL_TASK), 12000, "config kill officer");
-		CheckInt(loaded.m_iReturnDelaySeconds, 300, "config loot time");
+
+		// Not in the shipped config: the attribute defaults must match the built-in defaults.
+		CheckInt(loaded.m_iExfilCountdownSeconds, settings.m_iExfilCountdownSeconds, "config exfil countdown");
+		CheckInt(loaded.m_iCancelPayPercent, settings.m_iCancelPayPercent, "config cancel percent");
+		CheckInt(loaded.m_iCancelReturnSeconds, settings.m_iCancelReturnSeconds, "config cancel return");
+		Check(loaded.m_fExfilPlayerRatio == settings.m_fExfilPlayerRatio, "config exfil ratio");
+		Check(loaded.m_fExfilMaxDistance == settings.m_fExfilMaxDistance, "config exfil max distance");
 		Finish();
 	}
 }
@@ -134,17 +141,58 @@ class CTR_Test_PayoutRules : CTR_TestCase
 		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 6000, active).m_iTotal, CTR_PayoutCalculator.Calculate(settings, 6000, active).m_iTotal, "so far: the pay once a task is completed");
 		CheckInt(CTR_PayoutCalculator.CalculateSoFar(settings, 0, CTR_PayoutTests.CreateStats(false, 4)).m_iKills, 0, "so far: no lines outside the AO");
 
-		// If every task still possible is completed.
-		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 14000, active), 14000 + 1000 + 600 - 2500, "all completed: tasks and personal lines");
-		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 14000, CTR_PayoutTests.CreateStats(false, 4)), 14000 + 1000, "all completed: counts as entering the AO");
-		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 0, active), 0, "all completed: nothing when every task failed");
-		CheckInt(CTR_PayoutCalculator.CalculateIfAllCompleted(settings, 6000, CTR_PayoutTests.CreateStats(true, 0, 1)), 0, "all completed: not below 0");
+		// If the exfil succeeds.
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, active), 14000 + 1000 + 600 - 2500, "if success: tasks and personal lines");
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 14000, CTR_PayoutTests.CreateStats(false, 4)), 14000 + 1000, "if success: counts as entering the AO");
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 0, active), 0, "if success: nothing without task pay");
+		CheckInt(CTR_PayoutCalculator.CalculateIfSuccess(settings, 6000, CTR_PayoutTests.CreateStats(true, 0, 1)), 0, "if success: not below 0");
 		Finish();
 	}
 }
 
 //------------------------------------------------------------------------------------------------
-//! The operation screen of a running operation: the same merging as the pay, the live lines, and never paid.
+//! How the operation ended sets the share of the earnings; deductions stay whole and the total is never below 0.
+class CTR_Test_PayPercent : CTR_TestCase
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void Run()
+	{
+		CTR_Settings settings = CTR_Settings.CreateDefault();
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.COMPLETE), 100, "complete");
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.EARLY_EXFIL), 100, "early exfil");
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.FAILED), 100, "failed (nothing completed anyway)");
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.CANCELLED), 25, "cancelled before the exfil");
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.ABANDONED), 0, "cancelled during the exfil");
+		CheckInt(settings.GetPayPercent(CTR_EOperationEnd.MISSING), 0, "missing in action");
+
+		int tasks = 6000 + 8000 + 12000;
+		CTR_Payout quarter = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10, 0, 0, 2), 25);
+		CheckInt(quarter.m_iTasks, tasks / 4, "25%: task line");
+		CheckInt(quarter.m_iKills, 10 * 250 / 4, "25%: kill line");
+		CheckInt(quarter.m_iHeals, 2 * 300 / 4, "25%: heal line");
+		CheckInt(quarter.m_iTotal, tasks / 4 + 625 + 150, "25%: total");
+
+		CTR_Payout odd = CTR_PayoutCalculator.Calculate(settings, 6000, CTR_PayoutTests.CreateStats(true, 3), 25);
+		CheckInt(odd.m_iKills, 187, "25%: rounded down (750 -> 187)");
+
+		CTR_Payout deducted = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 0, 1, 1), 25);
+		CheckInt(deducted.m_iTeamKills, -10000, "25%: team kill deduction whole");
+		CheckInt(deducted.m_iDeaths, -2500, "25%: death deduction whole");
+		CheckInt(deducted.m_iTotal, 0, "25%: total not below 0");
+
+		CTR_Payout nothing = CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10, 0, 1, 2), 0);
+		CheckInt(nothing.m_iTasks + nothing.m_iKills + nothing.m_iHeals, 0, "0%: no earnings");
+		CheckInt(nothing.m_iDeaths, -2500, "0%: deduction still shown");
+		CheckInt(nothing.m_iTotal, 0, "0%: total 0");
+
+		CheckInt(CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10), 100).m_iTotal, CTR_PayoutCalculator.Calculate(settings, tasks, CTR_PayoutTests.CreateStats(true, 10)).m_iTotal, "100% is the full pay");
+		Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The operation screen of a running operation: the same merging as the pay, the live lines, and never paid. Before the
+//! exfil the pay if it succeeds counts every task that has not failed; after it starts, only the completed ones.
 class CTR_Test_SettlementInProgress : CTR_TestCase
 {
 	//------------------------------------------------------------------------------------------------
@@ -153,24 +201,34 @@ class CTR_Test_SettlementInProgress : CTR_TestCase
 		array<ref CTR_AreaInfo> areas = {};
 		CTR_TaskOutcome failed = CTR_PayoutTests.CreateTask("COE_FindIntelTaskBuilder", false);
 		failed.m_bFailed = true;
-		array<ref CTR_TaskOutcome> tasks = {CTR_PayoutTests.CreateTask("COE_ClearAreaTaskBuilder", false), failed};
+		array<ref CTR_TaskOutcome> tasks = {CTR_PayoutTests.CreateTask("COE_ClearAreaTaskBuilder", false), failed, CTR_PayoutTests.CreateTask("COE_DestroyCacheTaskBuilder", true)};
 
-		CTR_Settlement status = CTR_Settlement.CreateInProgress(CTR_Settings.CreateDefault(), "op-live", 90, areas, tasks);
+		CTR_Settlement status = CTR_Settlement.CreateInProgress(CTR_Settings.CreateDefault(), "op-live", false, 90, areas, tasks);
 		map<int, ref CTR_Participant> participants = new map<int, ref CTR_Participant>();
 		participants.Insert(1, CTR_PayoutTests.CreateParticipant(1, "owner-a", CTR_PayoutTests.CreateStats(true, 2)));
 		participants.Insert(4, CTR_PayoutTests.CreateParticipant(4, "owner-a", CTR_PayoutTests.CreateStats(false, 1)));
+		participants.Insert(2, CTR_PayoutTests.CreateParticipant(2, "owner-b", CTR_PayoutTests.CreateStats(false)));
 		status.AddParticipants(participants);
 
-		CTR_OperationResult result = status.BuildResult(4, 0);
+		CTR_OperationResult result = status.BuildResult(4);
 		Check(result.m_bInProgress, "in progress");
-		Check(!result.m_bFinished, "not finished");
+		Check(!result.m_bExfil, "before the exfil");
 		CheckInt(result.m_Stats.m_iKills, 3, "sessions merged");
 		CheckInt(result.m_Payout.m_iKills, 3 * 250, "kill line shown");
-		CheckInt(result.m_Payout.m_iTotal, 0, "nothing paid before a task is completed");
+		CheckInt(result.m_Payout.m_iTotal, 8000 + 3 * 250, "lines so far");
 		CheckInt(result.m_ePayStatus, CTR_EPayStatus.NONE, "not paid");
-		CheckInt(result.m_iReturnDelaySeconds, 0, "no loot time while it runs");
 		CheckInt(result.m_aTasks[0].m_iReward, 6000, "reward of the open task");
-		CheckInt(result.m_iTotalIfAllCompleted, 6000 + 3 * 250, "if every task still possible is completed (the failed one does not count)");
+		CheckInt(result.m_iTotalIfSuccess, 6000 + 8000 + 3 * 250, "if success: every task still possible (the failed one does not count)");
+		CheckInt(result.m_iTeamPay, result.m_iTotalIfSuccess, "team if success: only those who entered");
+
+		CTR_Settlement exfil = CTR_Settlement.CreateInProgress(CTR_Settings.CreateDefault(), "op-live", true, 90, areas, tasks);
+		exfil.AddParticipants(participants);
+		CTR_OperationResult inExfil = exfil.BuildResult(1);
+		Check(inExfil.m_bExfil, "during the exfil");
+		CheckInt(inExfil.m_iTotalIfSuccess, 8000 + 3 * 250, "if success during the exfil: completed tasks only");
+
+		CTR_OperationResult notEntered = exfil.BuildResult(2);
+		CheckInt(notEntered.m_iTotalIfSuccess, 8000, "if success: counts as entering the AO");
 		Finish();
 	}
 }
@@ -258,26 +316,27 @@ class CTR_Test_CprTime : CTR_TestCase
 }
 
 //------------------------------------------------------------------------------------------------
-//! Sessions merge per owner, only owners who entered get paid, settling the same operation again pays nothing, and an
-//! operation ended early still pays its completed tasks.
+//! Sessions merge per owner, only owners who entered get paid, settling the same operation again pays nothing, an
+//! early exfil pays its completed tasks in full, a cancelled operation a quarter and one missing in action nothing.
 class CTR_Test_SettlementPaysOnce : CTR_TestCase
 {
 	protected ref MRX_EconomyService m_Economy;
 	protected ref CTR_Settlement m_First;
 	protected ref CTR_Settlement m_Second;
-	protected ref CTR_Settlement m_EndedEarly;
+	protected ref CTR_Settlement m_Cancelled;
+	protected ref CTR_Settlement m_Missing;
 
 	//------------------------------------------------------------------------------------------------
 	override protected void Run()
 	{
 		m_Economy = CTR_PayoutTests.CreateEconomy();
-		m_First = CreateSettlement(true);
+		m_First = CreateSettlement(CTR_EOperationEnd.EARLY_EXFIL);
 		m_First.GetOnDone().Insert(OnFirstDone);
 		m_First.Pay(m_Economy);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected CTR_Settlement CreateSettlement(bool finished, string operationId = "test-op")
+	protected CTR_Settlement CreateSettlement(CTR_EOperationEnd end, string operationId = "test-op")
 	{
 		array<ref CTR_AreaInfo> areas = {};
 		array<ref CTR_TaskOutcome> tasks = {
@@ -285,7 +344,7 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 			CTR_PayoutTests.CreateTask("COE_FindIntelTaskBuilder", false)
 		};
 
-		CTR_Settlement settlement = new CTR_Settlement(CTR_Settings.CreateDefault(), operationId, finished, 60, areas, tasks);
+		CTR_Settlement settlement = new CTR_Settlement(CTR_Settings.CreateDefault(), operationId, end, 60, areas, tasks);
 		map<int, ref CTR_Participant> participants = new map<int, ref CTR_Participant>();
 		participants.Insert(1, CTR_PayoutTests.CreateParticipant(1, "owner-a", CTR_PayoutTests.CreateStats(true, 2)));
 		// owner-a again after a reconnect, without entering the AO in this session
@@ -297,9 +356,12 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! The intel task was left by the early exfil; the completed area clearing pays in full.
 	protected void OnFirstDone(CTR_Settlement settlement)
 	{
-		CTR_OperationResult a = settlement.BuildResult(5, 10);
+		CTR_OperationResult a = settlement.BuildResult(5);
+		CheckInt(a.m_eEnd, CTR_EOperationEnd.EARLY_EXFIL, "owner-a end");
+		CheckInt(a.m_iPayPercent, 100, "owner-a share");
 		CheckInt(a.m_Stats.m_iKills, 3, "sessions of owner-a merged");
 		Check(a.m_Stats.m_bEnteredAO, "owner-a entered in one session");
 		CheckInt(a.m_Payout.m_iTotal, 6000 + 3 * 250, "owner-a pay");
@@ -307,21 +369,21 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 		Check(a.m_bHasBalance, "owner-a balance known");
 		CheckInt(a.m_iBalance, 6750, "owner-a balance");
 
-		CTR_OperationResult b = settlement.BuildResult(2, 10);
+		CTR_OperationResult b = settlement.BuildResult(2);
 		CheckInt(b.m_Payout.m_iTotal, 0, "owner-b did not enter");
 		CheckInt(b.m_ePayStatus, CTR_EPayStatus.NONE, "owner-b status");
 
-		CTR_OperationResult noOwner = settlement.BuildResult(3, 10);
+		CTR_OperationResult noOwner = settlement.BuildResult(3);
 		CheckInt(noOwner.m_Payout.m_iTotal, 6000, "player without owner earned pay");
 		CheckInt(noOwner.m_ePayStatus, CTR_EPayStatus.NO_OWNER, "player without owner is not paid");
 
-		CTR_OperationResult stranger = settlement.BuildResult(99, 10);
+		CTR_OperationResult stranger = settlement.BuildResult(99);
 		CheckInt(stranger.m_Payout.m_iTotal, 0, "player not in the operation");
 		CheckInt(stranger.m_iParticipants, 2, "participants");
 		CheckInt(stranger.m_iTeamPay, 6750 + 6000, "team pay");
 		CheckInt(stranger.CountCompletedTasks(), 1, "completed tasks");
 
-		m_Second = CreateSettlement(true);
+		m_Second = CreateSettlement(CTR_EOperationEnd.EARLY_EXFIL);
 		m_Second.GetOnDone().Insert(OnSecondDone);
 		m_Second.Pay(m_Economy);
 	}
@@ -329,26 +391,41 @@ class CTR_Test_SettlementPaysOnce : CTR_TestCase
 	//------------------------------------------------------------------------------------------------
 	protected void OnSecondDone(CTR_Settlement settlement)
 	{
-		CTR_OperationResult a = settlement.BuildResult(1, 10);
+		CTR_OperationResult a = settlement.BuildResult(1);
 		CheckInt(a.m_ePayStatus, CTR_EPayStatus.ALREADY_PAID, "second settlement of the same operation");
 		CheckInt(a.m_iBalance, 6750, "no second pay");
 
-		m_EndedEarly = CreateSettlement(false, "test-op-early");
-		m_EndedEarly.GetOnDone().Insert(OnEndedEarlyDone);
-		m_EndedEarly.Pay(m_Economy);
+		m_Cancelled = CreateSettlement(CTR_EOperationEnd.CANCELLED, "test-op-cancelled");
+		m_Cancelled.GetOnDone().Insert(OnCancelledDone);
+		m_Cancelled.Pay(m_Economy);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! The intel task was not finished, the completed area clearing pays.
-	protected void OnEndedEarlyDone(CTR_Settlement settlement)
+	protected void OnCancelledDone(CTR_Settlement settlement)
 	{
-		CTR_OperationResult a = settlement.BuildResult(1, 0);
-		Check(!a.m_bFinished && a.IsSuccess(), "ended early with a completed task");
-		CheckInt(a.m_Payout.m_iTotal, 6000 + 3 * 250, "ended early still pays owner-a");
-		CheckInt(a.m_ePayStatus, CTR_EPayStatus.PAID, "owner-a status after ending early");
-		CheckInt(a.m_iBalance, 2 * 6750, "owner-a paid for both operations");
+		CTR_OperationResult a = settlement.BuildResult(1);
+		CheckInt(a.m_iPayPercent, 25, "cancelled: share");
+		CheckInt(a.m_Payout.m_iTasks, 1500, "cancelled: a quarter of the task");
+		CheckInt(a.m_Payout.m_iTotal, 1500 + 187, "cancelled: a quarter of the earnings");
+		CheckInt(a.m_ePayStatus, CTR_EPayStatus.PAID, "cancelled: owner-a paid");
+		CheckInt(a.m_iBalance, 6750 + 1687, "cancelled: balance");
 
-		CTR_OperationResult b = settlement.BuildResult(2, 0);
+		m_Missing = CreateSettlement(CTR_EOperationEnd.MISSING, "test-op-missing");
+		m_Missing.GetOnDone().Insert(OnMissingDone);
+		m_Missing.Pay(m_Economy);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMissingDone(CTR_Settlement settlement)
+	{
+		CTR_OperationResult a = settlement.BuildResult(1);
+		CheckInt(a.m_eEnd, CTR_EOperationEnd.MISSING, "missing: end");
+		CheckInt(a.m_iPayPercent, 0, "missing: share");
+		CheckInt(a.m_Payout.m_iTotal, 0, "missing: nothing");
+		CheckInt(a.m_ePayStatus, CTR_EPayStatus.NONE, "missing: nothing to pay");
+		Check(!a.m_bHasBalance || a.m_iBalance == 6750 + 1687, "missing: balance unchanged");
+
+		CTR_OperationResult b = settlement.BuildResult(2);
 		CheckInt(b.m_Payout.m_iTotal, 0, "owner-b did not enter");
 		int balance;
 		Check(!m_Economy.TryGetCachedBalance("owner-b", MRX_Settings.DEFAULT_CURRENCY, balance) || balance == 0, "owner-b unpaid");
@@ -365,7 +442,9 @@ class CTR_Test_ResultJson : CTR_TestCase
 		CTR_OperationResult result = new CTR_OperationResult();
 		result.m_sOperationId = "op-json";
 		result.m_bInProgress = true;
-		result.m_bFinished = true;
+		result.m_bExfil = true;
+		result.m_eEnd = CTR_EOperationEnd.ABANDONED;
+		result.m_iPayPercent = 25;
 		result.m_iDurationSeconds = 1234;
 		CTR_AreaInfo area = new CTR_AreaInfo();
 		area.m_sName = "Morton";
@@ -384,12 +463,11 @@ class CTR_Test_ResultJson : CTR_TestCase
 		result.m_Stats = CTR_PayoutTests.CreateStats(true, 7, 1, 2, 3);
 		result.m_Stats.m_fDistance = 1500.5;
 		result.m_Payout = CTR_PayoutCalculator.Calculate(CTR_Settings.CreateDefault(), 150, result.m_Stats);
-		result.m_iTotalIfAllCompleted = 9000;
+		result.m_iTotalIfSuccess = 9000;
 		result.m_ePayStatus = CTR_EPayStatus.PAID;
 		result.m_bHasBalance = true;
 		result.m_iBalance = 420;
 		result.m_sCurrency = "cash";
-		result.m_iReturnDelaySeconds = 10;
 
 		string json = result.ToJson();
 		CTR_OperationResult loaded = CTR_OperationResult.FromJson(json);
@@ -398,7 +476,9 @@ class CTR_Test_ResultJson : CTR_TestCase
 		{
 			CheckString(loaded.m_sOperationId, "op-json", "operation id");
 			Check(loaded.m_bInProgress, "in progress");
-			Check(loaded.m_bFinished, "finished");
+			Check(loaded.m_bExfil, "exfil");
+			CheckInt(loaded.m_eEnd, CTR_EOperationEnd.ABANDONED, "end");
+			CheckInt(loaded.m_iPayPercent, 25, "share");
 			CheckInt(loaded.m_iDurationSeconds, 1234, "duration");
 			CheckInt(loaded.m_aAreas.Count(), 1, "areas");
 			CheckInt(loaded.m_aTasks.Count(), 2, "tasks");
@@ -412,10 +492,9 @@ class CTR_Test_ResultJson : CTR_TestCase
 
 			CheckInt(loaded.m_Stats.m_iKills, 7, "kills");
 			CheckInt(loaded.m_Payout.m_iTotal, result.m_Payout.m_iTotal, "total");
-			CheckInt(loaded.m_iTotalIfAllCompleted, 9000, "total if every task is completed");
+			CheckInt(loaded.m_iTotalIfSuccess, 9000, "total if the exfil succeeds");
 			CheckInt(loaded.m_ePayStatus, CTR_EPayStatus.PAID, "status");
 			CheckInt(loaded.m_iBalance, 420, "balance");
-			CheckInt(loaded.m_iReturnDelaySeconds, 10, "return delay");
 		}
 
 		Check(CTR_OperationResult.FromJson("not json") == null, "bad text is refused");
