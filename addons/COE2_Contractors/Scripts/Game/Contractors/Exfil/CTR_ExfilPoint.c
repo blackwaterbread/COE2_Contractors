@@ -57,7 +57,9 @@ class CTR_ExfilPoint
 }
 
 //------------------------------------------------------------------------------------------------
-//! The map menu entry is off where the exfil point is not allowed, and once the exfil started.
+//! The map menu entry is off where the exfil point is not allowed, and once the exfil started. Modded config classes
+//! repeat the attributes of the original: without them configs cannot create them.
+[BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleUIInfo("Name")]
 modded class COE_SetExfilPointRadialMenuEntry
 {
 	protected bool m_bCTR_DescriptionRead;
@@ -96,6 +98,7 @@ modded class COE_SetExfilPointRadialMenuEntry
 }
 
 //------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
 modded class COE_GenerateAOCommand
 {
 	//------------------------------------------------------------------------------------------------

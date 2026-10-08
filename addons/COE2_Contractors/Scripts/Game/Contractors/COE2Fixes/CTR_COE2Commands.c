@@ -37,6 +37,8 @@ modded class COE_DeployUserAction
 }
 
 //------------------------------------------------------------------------------------------------
+//! Modded config classes repeat the attributes of the original: without them configs cannot create them.
+[BaseContainerProps()]
 modded class COE_DeployCommand
 {
 	//------------------------------------------------------------------------------------------------
@@ -81,6 +83,7 @@ modded class COE_OpenBuildingModeUserAction
 }
 
 //------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
 modded class COE_OpenBuildingModeCommand
 {
 	//------------------------------------------------------------------------------------------------
