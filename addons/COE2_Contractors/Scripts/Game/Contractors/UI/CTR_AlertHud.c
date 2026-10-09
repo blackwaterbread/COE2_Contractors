@@ -3,6 +3,8 @@ enum CTR_EAlert
 {
 	//! The commander cancelled the operation; everyone returns shortly.
 	CANCELLED,
+	//! Every task is finished; the exfil starts.
+	EXFIL,
 	//! The commander ordered the early exfil.
 	EARLY_EXFIL,
 	//! A wave of enemy pursuers is coming; param = compass octant they come from (0 = north, clockwise).
@@ -13,8 +15,10 @@ enum CTR_EAlert
 //! A short alert at the top centre of the HUD (client): a large title and a small line, gone after a few seconds.
 class CTR_AlertHud
 {
+	//! How long every alert stays on the screen.
+	static const int SHOW_MS = 8000;
+
 	protected static const float TOP_MARGIN = 110;
-	protected static const int SHOW_MS = 5000;
 	protected static const ResourceName BOLD_FONT = "{EABA4FE9D014CCEF}UI/Fonts/RobotoCondensed/RobotoCondensed_Bold.fnt";
 	protected static const int TITLE_FONT_SIZE = 34;
 	protected static const int LINE_FONT_SIZE = 18;
@@ -41,6 +45,10 @@ class CTR_AlertHud
 				title = "#CTR-Alert_Cancelled";
 				line = "#CTR-Alert_CancelledLine";
 				break;
+			case CTR_EAlert.EXFIL:
+				title = "#CTR-Alert_Exfil";
+				line = "#CTR-Alert_ExfilLine";
+				break;
 			case CTR_EAlert.EARLY_EXFIL:
 				title = "#CTR-Alert_EarlyExfil";
 				line = "#CTR-Alert_EarlyExfilLine";
@@ -60,6 +68,8 @@ class CTR_AlertHud
 		s_iLastAlert = alert;
 		if (alert == CTR_EAlert.PURSUIT)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_FAILED);
+		else if (alert == CTR_EAlert.EXFIL)
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_SUCCEED);
 		else
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.HINT);
 

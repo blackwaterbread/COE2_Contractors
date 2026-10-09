@@ -459,6 +459,8 @@ modded class COE_GameMode
 		}
 
 		CTR_StartExfil(false);
+		if (m_CTR_Exfil)
+			CTR_AlertAll(CTR_EAlert.EXFIL, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -521,7 +523,8 @@ modded class COE_GameMode
 		m_CTR_Exfil = new CTR_Exfil(pos, settings);
 		m_CTR_Exfil.Start();
 		Print(string.Format("[CTR] Operation %1: exfil started (%2) at %3, %4 s", m_CTR_Operation.GetId(), CTR_GetExfilWord(early), pos, settings.m_iExfilCountdownSeconds));
-		m_CTR_Exfil.GetPursuit().Roll(m_CTR_Operation.GetCivilianKills());
+		// A pursuit coming now waits for the exfil alert to go, so its alert does not replace it at once.
+		m_CTR_Exfil.GetPursuit().Roll(m_CTR_Operation.GetCivilianKills(), CTR_AlertHud.SHOW_MS);
 	}
 
 	//------------------------------------------------------------------------------------------------

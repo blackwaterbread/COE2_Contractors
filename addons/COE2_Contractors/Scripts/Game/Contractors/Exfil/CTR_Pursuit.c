@@ -44,8 +44,8 @@ class CTR_Pursuit : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Rolls for a pursuit unless one came already. \return True when it starts now.
-	bool Roll(int civilians)
+	//! Rolls for a pursuit unless one came already. \param delayMs Before the first wave's alert. \return True when it starts now.
+	bool Roll(int civilians, int delayMs = 0)
 	{
 		if (m_bStarted)
 			return false;
@@ -54,20 +54,24 @@ class CTR_Pursuit : Managed
 		bool hit = Math.RandomFloat01() < chance;
 		Print(string.Format("[CTR] Pursuit roll: %1 civilians, chance %2, %3", civilians, chance, hit));
 		if (hit)
-			Start();
+			Start(delayMs);
 
 		return hit;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Starts the pursuit now: the first wave at once, the next ones at the wave interval.
-	void Start()
+	//! Starts the pursuit now: the first wave after the delay (at once by default), the next ones at the wave interval.
+	void Start(int delayMs = 0)
 	{
 		if (m_bStarted)
 			return;
 
 		m_bStarted = true;
-		WarnNextWave();
+		if (delayMs > 0)
+			GetGame().GetCallqueue().CallLater(WarnNextWave, delayMs);
+		else
+			WarnNextWave();
+
 		GetGame().GetCallqueue().CallLater(Retarget, m_Settings.m_iExfilEnemyRetargetSeconds * 1000, true);
 	}
 

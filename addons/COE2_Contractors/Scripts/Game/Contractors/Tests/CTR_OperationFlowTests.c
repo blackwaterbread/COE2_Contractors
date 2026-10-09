@@ -388,6 +388,9 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		CheckTimerRow("exfil", true);
 		CheckStatus(CTR_EExfilStatus.NONE, "away from the exfil point");
 		CheckInt(m_GameMode.CTR_GetTasksEnd(), GetExpectedTasksEnd(), "how the tasks ended");
+		if (GetExpectedTasksEnd() == COE_GameMode.CTR_TASKS_COMPLETE)
+			CheckInt(CTR_AlertHud.GetShownAlert(), CTR_EAlert.EXFIL, "exfil alert shown");
+
 		m_sTasksTime = GetTimerRow("operation");
 
 		// The commander cannot move the exfil point any more.

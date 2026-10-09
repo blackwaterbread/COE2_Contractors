@@ -41,6 +41,22 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A92ADF2BD2CEB04}" {
+   Id "CTR-Alert_Exfil"
+   Target_en_us "Mission Complete"
+   Target_ko_kr "임무 완수"
+   Modified 1787997716
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A92ADF2BD2DBC16}" {
+   Id "CTR-Alert_ExfilLine"
+   Target_en_us "Head to the exfil point."
+   Target_ko_kr "탈출 지점으로 이동하십시오."
+   Modified 1787997716
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A903DF0A37C6F32}" {
    Id "CTR-Alert_North"
    Target_en_us "north"
