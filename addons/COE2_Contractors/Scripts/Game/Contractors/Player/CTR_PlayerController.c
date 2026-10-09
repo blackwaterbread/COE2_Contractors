@@ -176,6 +176,30 @@ modded class COE_PlayerController
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Client: the commander cancels the operation (operation screen).
+	void CTR_RequestCancelOperation()
+	{
+		Rpc(CTR_RpcAsk_CancelOperation);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void CTR_RpcAsk_CancelOperation()
+	{
+		if (!CTR_CheckRequestRate())
+			return;
+
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!gameMode || !gameMode.IsCommander(GetPlayerId()))
+		{
+			Print(string.Format("[CTR] Cancel refused: player %1 is not the commander", GetPlayerId()), LogLevel.WARNING);
+			return;
+		}
+
+		gameMode.CTR_RequestCancel();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Server: shows an alert at the top of the owner's screen.
 	void CTR_SendAlert(CTR_EAlert alert, int param)
 	{

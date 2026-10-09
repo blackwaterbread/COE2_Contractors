@@ -481,6 +481,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A92BC2AA5AA3B45}" {
+   Id "CTR-Result_HoldToCancel"
+   Target_en_us "Hold to Cancel Operation"
+   Target_ko_kr "길게 눌러 작전 취소"
+   Modified 1788001344
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A903DF0A36CC5D1}" {
    Id "CTR-Result_IfSuccess"
    Target_en_us "If the exfil succeeds"

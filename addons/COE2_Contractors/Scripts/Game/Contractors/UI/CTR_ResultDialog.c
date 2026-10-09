@@ -1,6 +1,7 @@
 //! Operation screen (client): personal stats, the operation's tasks with their grid position and outcome, team totals,
 //! and the earnings at the bottom. While the operation runs it shows the earnings so far and the pay if the exfil
-//! succeeds; after it, how it ended and what was paid. The screen stays until it is closed.
+//! succeeds, and the commander can cancel it from there; after it, how it ended and what was paid. The screen stays until
+//! it is closed.
 //! Missing in action it holds the player: it cannot be closed and counts down to their death, then closes.
 class CTR_ResultDialog : MRX_ScriptedDialog
 {
@@ -24,6 +25,7 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected static const int HELD_UPDATE_MS = 200;
 	//! Missing in action: the screen lets go when the player is still alive this long after their time was up.
 	protected static const int HELD_GRACE_MS = 10000;
+	protected static const float CANCEL_BUTTON_WIDTH = 240;
 
 	protected ref CTR_OperationResult m_Result;
 	protected VerticalLayoutWidget m_wList;
@@ -36,6 +38,8 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	protected bool m_bHeld;
 	protected int m_iHeldUntilTick;
 	protected TextWidget m_wHeldLine;
+	//! In progress, for the commander: cancels the operation once held.
+	protected ref MRX_HoldButton m_CancelButton;
 
 	//! The open result screen, if any (weak).
 	protected static CTR_ResultDialog s_Instance;
@@ -138,7 +142,34 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 		AddEarnings();
 
 		if (m_Result.m_bInProgress)
+		{
+			AddCancelButton();
 			GetGame().GetCallqueue().CallLater(UpdateElapsed, 1000, true);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! For the commander only: the operation can be cancelled from wherever they are, not only at the base board.
+	protected void AddCancelButton()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		if (!m_wRows || !gameMode || !gameMode.IsCommander(SCR_PlayerController.GetLocalPlayerId()))
+			return;
+
+		m_CancelButton = MRX_HoldButton.Create(m_wRows, "#CTR-Result_HoldToCancel", CANCEL_BUTTON_WIDTH);
+		AlignableSlot.SetHorizontalAlign(m_CancelButton.GetRootWidget(), LayoutHorizontalAlign.Right);
+		AlignableSlot.SetPadding(m_CancelButton.GetRootWidget(), 0, 12, 0, 0);
+		m_CancelButton.GetOnHeld().Insert(OnCancelHeld);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancelHeld(MRX_HoldButton button)
+	{
+		COE_PlayerController controller = COE_PlayerController.GetInstance();
+		if (controller)
+			controller.CTR_RequestCancelOperation();
+
+		Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -228,6 +259,9 @@ class CTR_ResultDialog : MRX_ScriptedDialog
 	{
 		GetGame().GetCallqueue().Remove(UpdateElapsed);
 		GetGame().GetCallqueue().Remove(UpdateHeld);
+		if (m_CancelButton)
+			m_CancelButton.Stop();
+
 		if (s_Instance == this)
 			s_Instance = null;
 

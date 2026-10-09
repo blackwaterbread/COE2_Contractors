@@ -9,6 +9,7 @@ class CTR_OperationFlowTests
 		runner.Add(new CTR_Test_ExfilHoldBroken());
 		runner.Add(new CTR_Test_VehicleExfil());
 		runner.Add(new CTR_Test_CancelBeforeExfil());
+		runner.Add(new CTR_Test_CancelFromScreen());
 		runner.Add(new CTR_Test_ExfilAbandoned());
 		runner.Add(new CTR_Test_EarlyExfil());
 		runner.Add(new CTR_Test_EarlyExfilTasksDone());
@@ -764,6 +765,25 @@ class CTR_Test_CancelBeforeExfil : CTR_Test_OperationFlow
 		CheckInt(result.m_iPayPercent, 25, "a quarter paid");
 		CheckInt(result.CountCompletedTasks(), 0, "settled when cancelled, before the task was finished");
 		CheckInt(result.m_Payout.m_iTotal, 0, "nothing completed, nothing paid");
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The commander cancels from the operation screen (the request of its hold button): the same as from the base board.
+class CTR_Test_CancelFromScreen : CTR_Test_CancelBeforeExfil
+{
+	//------------------------------------------------------------------------------------------------
+	override protected void RequestCancel()
+	{
+		COE_PlayerController controller = COE_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(m_iPlayerId));
+		if (!controller || !m_GameMode.IsCommander(m_iPlayerId))
+		{
+			Print(CTR_TestRunner.TAG + ClassName() + ": host is not the commander, cancelling directly", LogLevel.WARNING);
+			m_GameMode.CTR_RequestCancel();
+			return;
+		}
+
+		controller.CTR_RequestCancelOperation();
 	}
 }
 
