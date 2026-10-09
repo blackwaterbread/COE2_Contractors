@@ -1,6 +1,8 @@
 //! Alerts the server shows on every player's screen.
 enum CTR_EAlert
 {
+	//! The commander generated the AO; the operation starts.
+	STARTED,
 	//! The commander cancelled the operation; everyone returns shortly.
 	CANCELLED,
 	//! Every task is finished; the exfil starts.
@@ -41,6 +43,10 @@ class CTR_AlertHud
 		string title;
 		switch (alert)
 		{
+			case CTR_EAlert.STARTED:
+				title = "#CTR-Alert_Started";
+				line = "#CTR-Alert_StartedLine";
+				break;
 			case CTR_EAlert.CANCELLED:
 				title = "#CTR-Alert_Cancelled";
 				line = "#CTR-Alert_CancelledLine";

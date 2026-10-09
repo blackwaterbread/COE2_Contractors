@@ -424,6 +424,7 @@ modded class COE_GameMode
 		m_CTR_OperationStart = CTR_GetTimeIn(0);
 		Replication.BumpMe();
 		Print(string.Format("[CTR] Operation %1 started (%2 AO)", m_CTR_Operation.GetId(), m_aCurrentAOs.Count()));
+		CTR_AlertAll(CTR_EAlert.STARTED, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------

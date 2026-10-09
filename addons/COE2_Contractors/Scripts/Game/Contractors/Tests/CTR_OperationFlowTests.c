@@ -246,6 +246,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		CTR_Operation operation = m_GameMode.CTR_GetOperation();
 		Check(operation && !operation.IsClosed(), "operation running");
 		Check(m_GameMode.CTR_HasOperation() && !m_GameMode.CTR_IsInExfil(), "operation replicated, no exfil yet");
+		CheckInt(CTR_AlertHud.GetShownAlert(), CTR_EAlert.STARTED, "operation start alert shown");
 		CheckInsertionPoint(true, "on once the AO runs");
 
 		array<KSC_BaseTask> tasks = {};

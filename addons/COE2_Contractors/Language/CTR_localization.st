@@ -121,6 +121,22 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A92BB37A6958D88}" {
+   Id "CTR-Alert_Started"
+   Target_en_us "Operation Started"
+   Target_ko_kr "작전 개시"
+   Modified 1788001099
+   Author "denev"
+   LastChanged "denev"
+  }
+  CustomStringTableItem "{6A92BB37A6AA994D}" {
+   Id "CTR-Alert_StartedLine"
+   Target_en_us "Move to the AO and carry out the tasks."
+   Target_ko_kr "작전지역으로 이동하여 임무를 수행하십시오."
+   Modified 1788001099
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A903DF0A37087AE}" {
    Id "CTR-Alert_West"
    Target_en_us "west"
