@@ -353,6 +353,14 @@ StringTable {
    Author "denev"
    LastChanged "denev"
   }
+  CustomStringTableItem "{6A929024BFD9A99A}" {
+   Id "CTR-Reason_ExfilHolding"
+   Target_en_us "The exfil point is being held: deploy after the hold"
+   Target_ko_kr "탈출 지점을 지키는 중이라 투입할 수 없습니다"
+   Modified 1787990084
+   Author "denev"
+   LastChanged "denev"
+  }
   CustomStringTableItem "{6A903DF0A374CE6D}" {
    Id "CTR-Reason_ExfilLocked"
    Target_en_us "The exfil has started: the exfil point stays"

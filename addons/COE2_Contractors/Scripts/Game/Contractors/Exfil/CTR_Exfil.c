@@ -4,6 +4,9 @@
 //! the base and AFK players could keep the others from leaving. Here only living players outside the base count.
 class CTR_Exfil : Managed
 {
+	//! Why Deploy is refused while the exfil point is held (IsDeployBlocked).
+	static const string HOLDING_REASON = "#CTR-Reason_ExfilHolding";
+
 	protected static const int CHECK_INTERVAL_MS = 2000;
 
 	protected vector m_vPos;
@@ -12,6 +15,8 @@ class CTR_Exfil : Managed
 	protected int m_iHoldSeconds;
 	protected bool m_bHolding;
 	protected WorldTimestamp m_HoldEnd;
+	//! The insertion point was switched off here when the hold started; forgotten with this exfil.
+	protected bool m_bInsertionPointOff;
 	//! Owners who left the game outside the base during the exfil, and the bodies they left (weak, same index).
 	protected ref array<string> m_aLeftOwners = {};
 	protected ref array<IEntity> m_aLeftBodies = {};
@@ -93,6 +98,7 @@ class CTR_Exfil : Managed
 				m_bHolding = true;
 				m_HoldEnd = now.PlusSeconds(m_iHoldSeconds);
 				gameMode.CTR_SetExfilHold(true, m_HoldEnd);
+				SetInsertionPointOff(gameMode, true);
 			}
 
 			if (!m_HoldEnd.Greater(now))
@@ -106,6 +112,7 @@ class CTR_Exfil : Managed
 		{
 			m_bHolding = false;
 			gameMode.CTR_SetExfilHold(false, null);
+			SetInsertionPointOff(gameMode, false);
 		}
 
 		WorldTimestamp deadline = gameMode.CTR_GetExfilDeadline();
@@ -114,6 +121,40 @@ class CTR_Exfil : Managed
 			Stop();
 			gameMode.CTR_OnExfilTimeout();
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! While the exfil point is held nobody may come out of the base (IsDeployBlocked): the insertion point is off in the
+	//! respawn menu too. It is switched back on when the hold breaks, only if it was switched off here; when the exfil
+	//! ends it stays off until COE2 deletes it with the AO.
+	protected void SetInsertionPointOff(notnull COE_GameMode gameMode, bool off)
+	{
+		SCR_SpawnPoint insertionPoint = gameMode.GetInsertionPoint();
+		if (off)
+		{
+			if (!insertionPoint || !insertionPoint.IsSpawnPointEnabled())
+				return;
+
+			insertionPoint.SetSpawnPointEnabled_S(false);
+			m_bInsertionPointOff = true;
+			return;
+		}
+
+		if (!m_bInsertionPointOff)
+			return;
+
+		m_bInsertionPointOff = false;
+		if (insertionPoint)
+			insertionPoint.SetSpawnPointEnabled_S(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Every machine: true while enough players hold the exfil point. Nobody deploys from the base then: one more player
+	//! outside the base raises the players needed and breaks the hold.
+	static bool IsDeployBlocked()
+	{
+		COE_GameMode gameMode = COE_GameMode.GetInstance();
+		return gameMode && gameMode.CTR_GetExfilHoldEnd() != null;
 	}
 
 	//------------------------------------------------------------------------------------------------

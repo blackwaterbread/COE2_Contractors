@@ -6,6 +6,7 @@ class CTR_OperationFlowTests
 	static void Register(notnull CTR_TestRunner runner)
 	{
 		runner.Add(new CTR_Test_OperationFlow());
+		runner.Add(new CTR_Test_ExfilHoldBroken());
 		runner.Add(new CTR_Test_VehicleExfil());
 		runner.Add(new CTR_Test_CancelBeforeExfil());
 		runner.Add(new CTR_Test_ExfilAbandoned());
@@ -19,9 +20,10 @@ class CTR_OperationFlowTests
 }
 
 //------------------------------------------------------------------------------------------------
-//! Puts an exfil point, generates an AO, moves the host into it, checks the live operation screen, completes every task:
-//! the exfil starts (countdown, timer, exfil point locked). The host goes to the exfil point and holds it: the operation
-//! pays in full, everyone returns, then the result screen arrives.
+//! Puts an exfil point and an insertion point, generates an AO, moves the host into it, checks the live operation screen,
+//! completes every task: the exfil starts (countdown, timer, exfil point locked). The host goes to the exfil point and
+//! holds it (meanwhile nobody deploys: Deploy blocked, insertion point off): the operation pays in full, everyone returns,
+//! then the result screen arrives.
 class CTR_Test_OperationFlow : CTR_TestCase
 {
 	protected static const float MIN_BASE_DISTANCE = 800;
@@ -64,6 +66,13 @@ class CTR_Test_OperationFlow : CTR_TestCase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Seconds the exfil point must be held in the test.
+	protected int GetHoldSeconds()
+	{
+		return TEST_HOLD_SECONDS;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Pursuit chances in the test: none unless the test wants one.
 	protected float GetPursuitChance()
 	{
@@ -89,7 +98,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 			s_fConfiguredChancePerCivilian = settings.m_fExfilEnemyChancePerCivilian;
 		}
 
-		settings.m_iExfilHoldSeconds = TEST_HOLD_SECONDS;
+		settings.m_iExfilHoldSeconds = GetHoldSeconds();
 		settings.m_iCancelReturnSeconds = TEST_CANCEL_SECONDS;
 		settings.m_iMiaDeathSeconds = TEST_MIA_SECONDS;
 		// A pursuit only where a test wants one.
@@ -221,6 +230,9 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		m_GameMode.SetNextAOParams(nextParams);
 		Check(CTR_DevTools.PlaceExfilPoint(location.m_vCenter), "exfil point placed");
 		Check(m_GameMode.CTR_GetExfilPointPos(m_vExfil), "exfil point known");
+		// Where the host enters the AO.
+		m_GameMode.ExecuteCommanderRequest(COE_ECommanderRequest.INSERTION_POINT, location.m_vCenter + Vector(m_GameMode.GetAORadius() - 40, 0, 0));
+		Check(m_GameMode.GetInsertionPoint() != null, "insertion point placed");
 
 		COE_PlayerController.CTR_GetOnOperationResult().Insert(OnResult);
 		m_GameMode.ExecuteCommanderRequest(COE_ECommanderRequest.GENERATE_AO);
@@ -234,6 +246,7 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		CTR_Operation operation = m_GameMode.CTR_GetOperation();
 		Check(operation && !operation.IsClosed(), "operation running");
 		Check(m_GameMode.CTR_HasOperation() && !m_GameMode.CTR_IsInExfil(), "operation replicated, no exfil yet");
+		CheckInsertionPoint(true, "on once the AO runs");
 
 		array<KSC_BaseTask> tasks = {};
 		GetTasks(tasks);
@@ -413,6 +426,15 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		CTR_EExfilStatus shown = GetStatus();
 		Check(shown == CTR_EExfilStatus.PRESENT || shown == CTR_EExfilStatus.HOLD, "return status at the exfil point: " + typename.EnumToString(CTR_EExfilStatus, shown));
 		CheckString(GetTimerRow("operation"), m_sTasksTime, "operation time stopped when the tasks ended");
+		Check(CTR_Exfil.IsDeployBlocked(), "deploy blocked while the exfil point is held");
+		CheckInsertionPoint(false, "off while the exfil point is held");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckInsertionPoint(bool enabled, string message)
+	{
+		SCR_SpawnPoint insertionPoint = m_GameMode.GetInsertionPoint();
+		Check(insertionPoint && insertionPoint.IsSpawnPointEnabled() == enabled, "insertion point " + message);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -575,6 +597,47 @@ class CTR_Test_OperationFlow : CTR_TestCase
 		}
 
 		super.Finish();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! The host holds the exfil point and leaves it before the hold is over: the hold breaks, Deploy and the insertion
+//! point are back. Holding it again completes the operation.
+class CTR_Test_ExfilHoldBroken : CTR_Test_OperationFlow
+{
+	//------------------------------------------------------------------------------------------------
+	//! Long enough to leave the exfil point before the hold is over.
+	override protected int GetHoldSeconds()
+	{
+		return 8;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DuringExfil()
+	{
+		GoToExfil();
+		GetGame().GetCallqueue().CallLater(LeaveExfil, 2600);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LeaveExfil()
+	{
+		CheckHolding();
+
+		// Back into the AO: still outside the base, away from the exfil point.
+		vector pos;
+		Check(CTR_DevTools.GetAOEntryPos(pos), "AO to go back to");
+		Teleport(pos);
+		GetGame().GetCallqueue().CallLater(CheckHoldBroken, 2600);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CheckHoldBroken()
+	{
+		Check(m_GameMode.CTR_IsInExfil() && m_GameMode.CTR_GetExfilHoldEnd() == null, "hold broken when the host left the exfil point");
+		Check(!CTR_Exfil.IsDeployBlocked(), "deploy allowed again");
+		CheckInsertionPoint(true, "on again after the hold broke");
+		super.DuringExfil();
 	}
 }
 
